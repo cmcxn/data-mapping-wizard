@@ -74,7 +74,36 @@ public class DataMapWizard extends JFrame {
     }
 
     private void initNavigationPanel() {
-        JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel navPanel = new JPanel(new BorderLayout());
+
+        // Left-aligned panel for configuration buttons
+        JPanel leftButtonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton saveConfigButton = new JButton("Save Configuration");
+        JButton loadConfigButton = new JButton("Load Configuration");
+
+        saveConfigButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (generateCodePanel != null) {
+                    generateCodePanel.saveConfiguration();
+                }
+            }
+        });
+
+        loadConfigButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (generateCodePanel != null) {
+                    generateCodePanel.loadConfiguration();
+                }
+            }
+        });
+
+        leftButtonPanel.add(saveConfigButton);
+        leftButtonPanel.add(loadConfigButton);
+
+        // Right-aligned panel for navigation buttons
+        JPanel rightButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         prevButton = new JButton("Previous");
         nextButton = new JButton("Next");
 
@@ -92,8 +121,11 @@ public class DataMapWizard extends JFrame {
             }
         });
 
-        navPanel.add(prevButton);
-        navPanel.add(nextButton);
+        rightButtonPanel.add(prevButton);
+        rightButtonPanel.add(nextButton);
+
+        navPanel.add(leftButtonPanel, BorderLayout.WEST);
+        navPanel.add(rightButtonPanel, BorderLayout.EAST);
 
         add(navPanel, BorderLayout.SOUTH);
 
@@ -450,7 +482,7 @@ public class DataMapWizard extends JFrame {
     }
 
     public String generateCode(){
-       return  Code.generateCode(sourceTables, targetTables, sourceColumns, targetColumns, mappings);
+        return  Code.generateCode(sourceTables, targetTables, sourceColumns, targetColumns, mappings);
     }
 
     /**
@@ -694,5 +726,4 @@ public class DataMapWizard extends JFrame {
             e.printStackTrace();
         }
     }
-
 }

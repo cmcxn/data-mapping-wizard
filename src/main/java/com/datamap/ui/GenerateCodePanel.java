@@ -41,22 +41,6 @@ public class GenerateCodePanel extends JPanel {
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
-        JButton saveConfigButton = new JButton("Save Configuration");
-        saveConfigButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                saveConfiguration();
-            }
-        });
-
-        JButton loadConfigButton = new JButton("Load Configuration");
-        loadConfigButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                loadConfiguration();
-            }
-        });
-
         JButton copyButton = new JButton("Copy to Clipboard");
         copyButton.addActionListener(new ActionListener() {
             @Override
@@ -73,8 +57,6 @@ public class GenerateCodePanel extends JPanel {
             }
         });
 
-        buttonPanel.add(saveConfigButton);
-        buttonPanel.add(loadConfigButton);
         buttonPanel.add(copyButton);
         buttonPanel.add(regenerateButton);
 
@@ -100,7 +82,7 @@ public class GenerateCodePanel extends JPanel {
         JOptionPane.showMessageDialog(this, "Code copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void saveConfiguration() {
+    public void saveConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Save Configuration");
         fileChooser.setFileFilter(new FileNameExtensionFilter("JSON Files (*.json)", "json"));
@@ -129,7 +111,7 @@ public class GenerateCodePanel extends JPanel {
         }
     }
 
-    private void loadConfiguration() {
+    public void loadConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Load Configuration");
         fileChooser.setFileFilter(new FileNameExtensionFilter("JSON Files (*.json)", "json"));
