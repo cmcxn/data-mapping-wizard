@@ -14,25 +14,38 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencies>
-        <!-- Jackson 数据绑定核心库 -->
+        <!-- Jackson data binding libraries -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.13.1</version> <!-- 请根据需要使用最新的稳定版本 -->
+            <version>2.13.1</version>
         </dependency>
 
-        <!-- 如果需要，也可以单独引入其他模块，例如数据注解 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <version>2.13.1</version> <!-- 请根据需要使用最新的稳定版本 -->
+            <version>2.13.1</version>
         </dependency>
 
-        <!-- 以及数据处理核心库 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.13.1</version> <!-- 请根据需要使用最新的稳定版本 -->
+            <version>2.13.1</version>
+        </dependency>
+        
+
+        
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.27</version>
+        </dependency>
+
+        <!-- Database drivers -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.2</version>
         </dependency>
     </dependencies>
 

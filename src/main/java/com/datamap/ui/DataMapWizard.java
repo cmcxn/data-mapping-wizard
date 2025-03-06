@@ -25,8 +25,10 @@ public class DataMapWizard extends JFrame {
     private Map<String, SourceColumn> sourceColumns = new HashMap<>();
     private Map<String, TargetColumn> targetColumns = new HashMap<>();
     private List<Mapping> mappings = new ArrayList<>();
+    private List<DataSource> dataSources = new ArrayList<>();
 
     // Wizard panels
+    private DatabaseConfigPanel databaseConfigPanel;
     private AddTablesPanel addTablesPanel;
     private AddColumnsPanel addColumnsPanel;
     private NoneMappingPanel noneMappingPanel;
@@ -36,7 +38,7 @@ public class DataMapWizard extends JFrame {
     private GenerateCodePanel generateCodePanel;
 
     // Current panel tracking
-    private String currentPanel = "addTables";
+    private String currentPanel = "databaseConfig";
 
     public DataMapWizard() {
         setTitle("Data Mapping Wizard");
@@ -54,6 +56,7 @@ public class DataMapWizard extends JFrame {
     }
 
     private void initPanels() {
+        databaseConfigPanel = new DatabaseConfigPanel(this);
         addTablesPanel = new AddTablesPanel(this);
         addColumnsPanel = new AddColumnsPanel(this);
         noneMappingPanel = new NoneMappingPanel(this);
@@ -62,6 +65,7 @@ public class DataMapWizard extends JFrame {
         externalConnectionPanel = new ExternalConnectionPanel(this);
         generateCodePanel = new GenerateCodePanel(this);
 
+        wizardPanel.add(databaseConfigPanel, "databaseConfig");
         wizardPanel.add(addTablesPanel, "addTables");
         wizardPanel.add(addColumnsPanel, "addColumns");
         wizardPanel.add(noneMappingPanel, "noneMapping");
@@ -70,7 +74,7 @@ public class DataMapWizard extends JFrame {
         wizardPanel.add(externalConnectionPanel, "externalConnection");
         wizardPanel.add(generateCodePanel, "generateCode");
 
-        cardLayout.show(wizardPanel, "addTables");
+        cardLayout.show(wizardPanel, "databaseConfig");
     }
 
     private void initNavigationPanel() {
@@ -137,6 +141,10 @@ public class DataMapWizard extends JFrame {
         String nextPanel = null;
 
         switch (currentPanel) {
+            case "databaseConfig":
+                nextPanel = "addTables";
+                dataSources = databaseConfigPanel.getDataSources();
+                break;
             case "addTables":
                 nextPanel = "addColumns";
                 addColumnsPanel.updateComponents();
@@ -174,6 +182,9 @@ public class DataMapWizard extends JFrame {
         String prevPanel = null;
 
         switch (currentPanel) {
+            case "addTables":
+                prevPanel = "databaseConfig";
+                break;
             case "addColumns":
                 prevPanel = "addTables";
                 break;
@@ -208,7 +219,7 @@ public class DataMapWizard extends JFrame {
 
     private void updateButtonState() {
         // Disable previous button on first panel
-        prevButton.setEnabled(!currentPanel.equals("addTables"));
+        prevButton.setEnabled(!currentPanel.equals("databaseConfig"));
 
         // Change Next button text to "Generate" on last mapping panel
         if (currentPanel.equals("externalConnection")) {
@@ -479,6 +490,10 @@ public class DataMapWizard extends JFrame {
 
     public List<Mapping> getMappings() {
         return mappings;
+    }
+
+    public List<DataSource> getDataSources() {
+        return dataSources;
     }
 
     public String generateCode(){
