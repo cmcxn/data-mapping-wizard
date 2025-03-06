@@ -11,12 +11,12 @@ import java.util.Map;
 
 public class ExternalConnectionPanel extends JPanel {
     private DataMapWizard wizard;
-    private JComboBox<String> sourceTableCombo;
-    private JComboBox<String> sourceIdColumnCombo;
+    private JComboBox<String> targetColumnCombo;
     private JComboBox<String> externalTableCombo;
     private JComboBox<String> externalColumnCombo;
     private JComboBox<String> externalIdColumnCombo;
-    private JComboBox<String> targetColumnCombo;
+    private JComboBox<String> sourceTableCombo;
+    private JComboBox<String> sourceIdColumnCombo;
     private DefaultListModel<String> mappingsModel;
     private JList<String> mappingsList;
 
@@ -36,31 +36,15 @@ public class ExternalConnectionPanel extends JPanel {
         JPanel inputPanel = new JPanel(new GridLayout(6, 2, 10, 10));
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        inputPanel.add(new JLabel("Source Table:"));
-        sourceTableCombo = new JComboBox<>();
-        sourceTableCombo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                updateSourceIdColumns();
-            }
-        });
-        inputPanel.add(sourceTableCombo);
-
-        inputPanel.add(new JLabel("Source ID Column:"));
-        sourceIdColumnCombo = new JComboBox<>();
-        inputPanel.add(sourceIdColumnCombo);
+        inputPanel.add(new JLabel("Target Column:"));
+        targetColumnCombo = new JComboBox<>();
+        inputPanel.add(targetColumnCombo);
 
         inputPanel.add(new JLabel("External Table:"));
         externalTableCombo = new JComboBox<>();
-        externalTableCombo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                updateExternalColumns();
-            }
-        });
         inputPanel.add(externalTableCombo);
 
-        inputPanel.add(new JLabel("External Source Column:"));
+        inputPanel.add(new JLabel("External Column:"));
         externalColumnCombo = new JComboBox<>();
         inputPanel.add(externalColumnCombo);
 
@@ -68,9 +52,13 @@ public class ExternalConnectionPanel extends JPanel {
         externalIdColumnCombo = new JComboBox<>();
         inputPanel.add(externalIdColumnCombo);
 
-        inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new JComboBox<>();
-        inputPanel.add(targetColumnCombo);
+        inputPanel.add(new JLabel("Source Table:"));
+        sourceTableCombo = new JComboBox<>();
+        inputPanel.add(sourceTableCombo);
+
+        inputPanel.add(new JLabel("Source ID Column:"));
+        sourceIdColumnCombo = new JComboBox<>();
+        inputPanel.add(sourceIdColumnCombo);
 
         // Mappings panel
         JPanel mappingsPanel = new JPanel(new BorderLayout());
@@ -110,63 +98,43 @@ public class ExternalConnectionPanel extends JPanel {
         JLabel instructionLabel = new JLabel("Step 6: Create External Connection Mappings");
         instructionLabel.setFont(new Font(instructionLabel.getFont().getName(), Font.BOLD, 14));
         add(instructionLabel, BorderLayout.NORTH);
-    }
 
-    private void updateSourceIdColumns() {
-        sourceIdColumnCombo.removeAllItems();
-
-        String selectedTable = (String) sourceTableCombo.getSelectedItem();
-        if (selectedTable != null) {
-            Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
-            for (String columnKey : sourceColumns.keySet()) {
-                if (columnKey.startsWith(selectedTable + ".")) {
-                    sourceIdColumnCombo.addItem(columnKey.split("\\.")[1]);
-                }
+        // Add listeners to update the dependent comboboxes
+        sourceTableCombo.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateSourceIdColumnCombo();
             }
-        }
-    }
+        });
 
-    private void updateExternalColumns() {
-        externalColumnCombo.removeAllItems();
-        externalIdColumnCombo.removeAllItems();
-
-        String selectedTable = (String) externalTableCombo.getSelectedItem();
-        if (selectedTable != null) {
-            Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
-            for (String columnKey : sourceColumns.keySet()) {
-                if (columnKey.startsWith(selectedTable + ".")) {
-                    String columnName = columnKey.split("\\.")[1];
-                    externalColumnCombo.addItem(columnName);
-                    externalIdColumnCombo.addItem(columnName);
-                }
+        externalTableCombo.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateExternalColumnCombos();
             }
-        }
+        });
     }
 
     private void addMapping() {
-        String sourceTable = (String) sourceTableCombo.getSelectedItem();
-        String sourceIdColumn = (String) sourceIdColumnCombo.getSelectedItem();
-        String externalTable = (String) externalTableCombo.getSelectedItem();
-        String externalColumn = (String) externalColumnCombo.getSelectedItem();
-        String externalIdColumn = (String) externalIdColumnCombo.getSelectedItem();
         String targetColumnKey = (String) targetColumnCombo.getSelectedItem();
+        String externalTableName = (String) externalTableCombo.getSelectedItem();
+        String externalColumnName = (String) externalColumnCombo.getSelectedItem();
+        String externalIdColumnName = (String) externalIdColumnCombo.getSelectedItem();
+        String sourceTableName = (String) sourceTableCombo.getSelectedItem();
+        String sourceIdColumnName = (String) sourceIdColumnCombo.getSelectedItem();
 
-        if (sourceTable != null && sourceIdColumn != null && externalTable != null &&
-                externalColumn != null && externalIdColumn != null && targetColumnKey != null) {
+        if (targetColumnKey != null && externalTableName != null && externalColumnName != null &&
+                externalIdColumnName != null && sourceTableName != null && sourceIdColumnName != null) {
 
             String[] targetParts = targetColumnKey.split("\\.");
 
             if (targetParts.length == 2) {
-                wizard.addExternalConnectionMapping(
-                        targetParts[0], targetParts[1],
-                        externalTable, externalColumn,
-                        externalIdColumn, sourceTable, sourceIdColumn
-                );
+                wizard.addExternalConnectionMapping(targetParts[0], targetParts[1],
+                        externalTableName, externalColumnName,
+                        externalIdColumnName, sourceTableName, sourceIdColumnName);
 
-                mappingsModel.addElement(targetColumnKey + " <- ExternalConnection(" +
-                        externalTable + "." + externalColumn + " where " +
-                        externalTable + "." + externalIdColumn + " = " +
-                        sourceTable + "." + sourceIdColumn + ")");
+                mappingsModel.addElement(targetColumnKey + " <- " + externalTableName + "." +
+                        externalColumnName + " (Join on " + sourceTableName + "." + sourceIdColumnName + ")");
             }
         }
     }
@@ -179,38 +147,69 @@ public class ExternalConnectionPanel extends JPanel {
         }
     }
 
+    private void updateSourceIdColumnCombo() {
+        sourceIdColumnCombo.removeAllItems();
+
+        String selectedSourceTable = (String) sourceTableCombo.getSelectedItem();
+        if (selectedSourceTable != null) {
+            for (Map.Entry<String, SourceColumn> entry : wizard.getSourceColumns().entrySet()) {
+                if (entry.getKey().startsWith(selectedSourceTable + ".")) {
+                    String columnName = entry.getKey().substring(selectedSourceTable.length() + 1);
+                    sourceIdColumnCombo.addItem(columnName);
+                }
+            }
+        }
+    }
+
+    private void updateExternalColumnCombos() {
+        externalColumnCombo.removeAllItems();
+        externalIdColumnCombo.removeAllItems();
+
+        String selectedExternalTable = (String) externalTableCombo.getSelectedItem();
+        if (selectedExternalTable != null) {
+            for (Map.Entry<String, SourceColumn> entry : wizard.getSourceColumns().entrySet()) {
+                if (entry.getKey().startsWith(selectedExternalTable + ".")) {
+                    String columnName = entry.getKey().substring(selectedExternalTable.length() + 1);
+                    externalColumnCombo.addItem(columnName);
+                    externalIdColumnCombo.addItem(columnName);
+                }
+            }
+        }
+    }
+
     public void updateComponents() {
-        sourceTableCombo.removeAllItems();
-        externalTableCombo.removeAllItems();
         targetColumnCombo.removeAllItems();
+        externalTableCombo.removeAllItems();
+        sourceTableCombo.removeAllItems();
 
-        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
         Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
+        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
 
-        // Add unique source tables
-        for (String columnKey : sourceColumns.keySet()) {
-            String tableName = columnKey.split("\\.")[0];
-            boolean found = false;
+        // Populate target columns
+        for (String columnKey : targetColumns.keySet()) {
+            targetColumnCombo.addItem(columnKey);
+        }
+
+        // Get unique source table names
+        for (SourceColumn column : sourceColumns.values()) {
+            String tableName = column.getTable().getName();
+            boolean exists = false;
 
             for (int i = 0; i < sourceTableCombo.getItemCount(); i++) {
                 if (sourceTableCombo.getItemAt(i).equals(tableName)) {
-                    found = true;
+                    exists = true;
                     break;
                 }
             }
 
-            if (!found) {
+            if (!exists) {
                 sourceTableCombo.addItem(tableName);
                 externalTableCombo.addItem(tableName);
             }
         }
 
-        // Add target columns
-        for (String columnKey : targetColumns.keySet()) {
-            targetColumnCombo.addItem(columnKey);
-        }
-
-        updateSourceIdColumns();
-        updateExternalColumns();
+        // Initialize dependent comboboxes
+        updateSourceIdColumnCombo();
+        updateExternalColumnCombos();
     }
 }

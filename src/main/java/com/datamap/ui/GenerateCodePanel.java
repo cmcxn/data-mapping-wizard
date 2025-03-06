@@ -203,6 +203,9 @@ public class GenerateCodePanel extends JPanel {
                     }
                 }
 
+                // Refresh all panels to show the loaded data
+                wizard.refreshAllPanelUIs();
+
                 // Update code after loading
                 updateCode();
 

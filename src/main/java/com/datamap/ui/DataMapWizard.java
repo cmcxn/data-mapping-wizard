@@ -549,7 +549,6 @@ public class DataMapWizard extends JFrame {
 
         return code.toString();
     }
-    // Add this method to the DataMapWizard class
 
     /**
      * Resets all data structures for loading a new configuration
@@ -560,47 +559,237 @@ public class DataMapWizard extends JFrame {
         sourceColumns.clear();
         targetColumns.clear();
         mappings.clear();
+    }
 
-        // We also need to update all panel UI models after loading
+    /**
+     * Refreshes all panel UIs to reflect the current data model
+     * Called after loading configuration to ensure UI displays loaded data
+     */
+    public void refreshAllPanelUIs() {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                // Reset AddTablesPanel
-                addTablesPanel = new AddTablesPanel(DataMapWizard.this);
-                wizardPanel.remove(0); // Remove old panel
-                wizardPanel.add(addTablesPanel, "addTables", 0); // Add new panel
+                // Refresh AddTablesPanel
+                refreshAddTablesPanel();
 
-                // Reset AddColumnsPanel
-                addColumnsPanel = new AddColumnsPanel(DataMapWizard.this);
-                wizardPanel.remove(1); // Remove old panel
-                wizardPanel.add(addColumnsPanel, "addColumns", 1); // Add new panel
+                // Refresh AddColumnsPanel
+                addColumnsPanel.updateComponents();
+                refreshAddColumnsPanel();
 
-                // Reset NoneMappingPanel
-                noneMappingPanel = new NoneMappingPanel(DataMapWizard.this);
-                wizardPanel.remove(2); // Remove old panel
-                wizardPanel.add(noneMappingPanel, "noneMapping", 2); // Add new panel
+                // Refresh mapping panels
+                refreshNoneMappingPanel();
+                refreshDictMappingPanel();
+                refreshConstantMappingPanel();
+                refreshExternalConnectionPanel();
 
-                // Reset DictMappingPanel
-                dictMappingPanel = new DictMappingPanel(DataMapWizard.this);
-                wizardPanel.remove(3); // Remove old panel
-                wizardPanel.add(dictMappingPanel, "dictMapping", 3); // Add new panel
-
-                // Reset ConstantMappingPanel
-                constantMappingPanel = new ConstantMappingPanel(DataMapWizard.this);
-                wizardPanel.remove(4); // Remove old panel
-                wizardPanel.add(constantMappingPanel, "constantMapping", 4); // Add new panel
-
-                // Reset ExternalConnectionPanel
-                externalConnectionPanel = new ExternalConnectionPanel(DataMapWizard.this);
-                wizardPanel.remove(5); // Remove old panel
-                wizardPanel.add(externalConnectionPanel, "externalConnection", 5); // Add new panel
-
-                // Reset to first panel
-                cardLayout.show(wizardPanel, "addTables");
-                currentPanel = "addTables";
-                updateButtonState();
+                // Update code panel
+                generateCodePanel.updateCode();
             }
         });
+    }
+
+    /**
+     * Refreshes the AddTablesPanel UI
+     */
+    private void refreshAddTablesPanel() {
+        // Get the field for sourceTablesModel using reflection
+        try {
+            java.lang.reflect.Field sourceTablesModelField = AddTablesPanel.class.getDeclaredField("sourceTablesModel");
+            sourceTablesModelField.setAccessible(true);
+            DefaultListModel<String> sourceTablesModel = (DefaultListModel<String>)sourceTablesModelField.get(addTablesPanel);
+
+            java.lang.reflect.Field targetTablesModelField = AddTablesPanel.class.getDeclaredField("targetTablesModel");
+            targetTablesModelField.setAccessible(true);
+            DefaultListModel<String> targetTablesModel = (DefaultListModel<String>)targetTablesModelField.get(addTablesPanel);
+
+            java.lang.reflect.Field sourceTableComboField = AddTablesPanel.class.getDeclaredField("sourceTableCombo");
+            sourceTableComboField.setAccessible(true);
+            JComboBox<String> sourceTableCombo = (JComboBox<String>)sourceTableComboField.get(addTablesPanel);
+
+            // Clear current values
+            sourceTablesModel.clear();
+            targetTablesModel.clear();
+            sourceTableCombo.removeAllItems();
+
+            // Add source tables to model and combo
+            for (String tableName : sourceTables.keySet()) {
+                sourceTablesModel.addElement(tableName);
+                sourceTableCombo.addItem(tableName);
+            }
+
+            // Add target tables to model
+            for (String tableName : targetTables.keySet()) {
+                targetTablesModel.addElement(tableName);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Refreshes the AddColumnsPanel UI
+     */
+    private void refreshAddColumnsPanel() {
+        try {
+            java.lang.reflect.Field sourceColumnsModelField = AddColumnsPanel.class.getDeclaredField("sourceColumnsModel");
+            sourceColumnsModelField.setAccessible(true);
+            DefaultListModel<String> sourceColumnsModel = (DefaultListModel<String>)sourceColumnsModelField.get(addColumnsPanel);
+
+            java.lang.reflect.Field targetColumnsModelField = AddColumnsPanel.class.getDeclaredField("targetColumnsModel");
+            targetColumnsModelField.setAccessible(true);
+            DefaultListModel<String> targetColumnsModel = (DefaultListModel<String>)targetColumnsModelField.get(addColumnsPanel);
+
+            // Clear current values
+            sourceColumnsModel.clear();
+            targetColumnsModel.clear();
+
+            // Add source columns to model
+            for (String columnKey : sourceColumns.keySet()) {
+                sourceColumnsModel.addElement(columnKey);
+            }
+
+            // Add target columns to model
+            for (String columnKey : targetColumns.keySet()) {
+                targetColumnsModel.addElement(columnKey);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Refreshes the NoneMappingPanel UI
+     */
+    private void refreshNoneMappingPanel() {
+        try {
+            // Get access to the mappingsModel field
+            java.lang.reflect.Field mappingsModelField = NoneMappingPanel.class.getDeclaredField("mappingsModel");
+            mappingsModelField.setAccessible(true);
+            DefaultListModel<String> mappingsModel = (DefaultListModel<String>)mappingsModelField.get(noneMappingPanel);
+
+            // Clear current mappings
+            mappingsModel.clear();
+
+            // Add mappings of type None
+            for (Mapping mapping : mappings) {
+                if (mapping instanceof None) {
+                    None noneMapping = (None) mapping;
+                    String targetKey = noneMapping.getTargetColumn().getTable().getName() + "." +
+                            noneMapping.getTargetColumn().getName();
+                    String sourceKey = noneMapping.getSourceColumn().getTable().getName() + "." +
+                            noneMapping.getSourceColumn().getName();
+                    mappingsModel.addElement(targetKey + " <- " + sourceKey);
+                }
+            }
+
+            // Update comboboxes
+            noneMappingPanel.updateComponents();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Refreshes the DictMappingPanel UI
+     */
+    private void refreshDictMappingPanel() {
+        try {
+            // Get access to the mappingsModel field
+            java.lang.reflect.Field mappingsModelField = DictMappingPanel.class.getDeclaredField("mappingsModel");
+            mappingsModelField.setAccessible(true);
+            DefaultListModel<String> mappingsModel = (DefaultListModel<String>)mappingsModelField.get(dictMappingPanel);
+
+            // Clear current mappings
+            mappingsModel.clear();
+
+            // Add mappings of type Dict
+            for (Mapping mapping : mappings) {
+                if (mapping instanceof Dict) {
+                    Dict dictMapping = (Dict) mapping;
+                    String targetKey = dictMapping.getTargetColumn().getTable().getName() + "." +
+                            dictMapping.getTargetColumn().getName();
+                    String sourceKey = dictMapping.getSourceColumn().getTable().getName() + "." +
+                            dictMapping.getSourceColumn().getName();
+                    mappingsModel.addElement(targetKey + " <- Dict(" + dictMapping.getDictType() + ") <- " + sourceKey);
+                }
+            }
+
+            // Update comboboxes
+            dictMappingPanel.updateComponents();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Refreshes the ConstantMappingPanel UI
+     */
+    private void refreshConstantMappingPanel() {
+        try {
+            // Get access to the mappingsModel field
+            java.lang.reflect.Field mappingsModelField = ConstantMappingPanel.class.getDeclaredField("mappingsModel");
+            mappingsModelField.setAccessible(true);
+            DefaultListModel<String> mappingsModel = (DefaultListModel<String>)mappingsModelField.get(constantMappingPanel);
+
+            // Clear current mappings
+            mappingsModel.clear();
+
+            // Add mappings of type Constant
+            for (Mapping mapping : mappings) {
+                if (mapping instanceof Constant) {
+                    Constant constantMapping = (Constant) mapping;
+                    String targetKey = constantMapping.getTargetColumn().getTable().getName() + "." +
+                            constantMapping.getTargetColumn().getName();
+                    mappingsModel.addElement(targetKey + " <- Constant(\"" + constantMapping.getConstantValue() + "\")");
+                }
+            }
+
+            // Update combobox
+            constantMappingPanel.updateComponents();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Refreshes the ExternalConnectionPanel UI
+     */
+    private void refreshExternalConnectionPanel() {
+        try {
+            // Get access to the mappingsModel field
+            java.lang.reflect.Field mappingsModelField = ExternalConnectionPanel.class.getDeclaredField("mappingsModel");
+            mappingsModelField.setAccessible(true);
+            DefaultListModel<String> mappingsModel = (DefaultListModel<String>)mappingsModelField.get(externalConnectionPanel);
+
+            // Clear current mappings
+            mappingsModel.clear();
+
+            // Add mappings of type ExternalConnection
+            for (Mapping mapping : mappings) {
+                if (mapping instanceof ExternalConnection) {
+                    ExternalConnection ecMapping = (ExternalConnection) mapping;
+                    String targetKey = ecMapping.getTargetColumn().getTable().getName() + "." +
+                            ecMapping.getTargetColumn().getName();
+                    String externalKey = ecMapping.getExternalSourceColumn().getTable().getName() + "." +
+                            ecMapping.getExternalSourceColumn().getName();
+                    String sourceIdKey = ecMapping.getSourceIdColumn().getTable().getName() + "." +
+                            ecMapping.getSourceIdColumn().getName();
+
+                    mappingsModel.addElement(targetKey + " <- " + externalKey + " (Join on " + sourceIdKey + ")");
+                }
+            }
+
+            // Update comboboxes
+            externalConnectionPanel.updateComponents();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
