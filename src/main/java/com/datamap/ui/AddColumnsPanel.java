@@ -1,20 +1,27 @@
 package com.datamap.ui;
 
+import com.datamap.model.DataSource;
 import com.datamap.model.SourceTable;
 import com.datamap.model.TargetTable;
+import com.datamap.util.DatabaseConnectionManager;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 public class AddColumnsPanel extends JPanel {
     private DataMapWizard wizard;
     private JComboBox<String> sourceTableCombo;
     private JComboBox<String> targetTableCombo;
-    private JTextField sourceColumnField;
-    private JTextField targetColumnField;
+    private JComboBox<String> sourceColumnCombo;
+    private JComboBox<String> targetColumnCombo;
     private DefaultListModel<String> sourceColumnsModel;
     private DefaultListModel<String> targetColumnsModel;
     private JList<String> sourceColumnsList;
@@ -40,11 +47,19 @@ public class AddColumnsPanel extends JPanel {
         JPanel sourceInputPanel = new JPanel(new GridLayout(4, 1, 5, 5));
         sourceInputPanel.add(new JLabel("Source Table:"));
         sourceTableCombo = new JComboBox<>();
+        sourceTableCombo.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    updateSourceColumns();
+                }
+            }
+        });
         sourceInputPanel.add(sourceTableCombo);
         
         sourceInputPanel.add(new JLabel("Column Name:"));
-        sourceColumnField = new JTextField(20);
-        sourceInputPanel.add(sourceColumnField);
+        sourceColumnCombo = new JComboBox<>();
+        sourceInputPanel.add(sourceColumnCombo);
         
         JButton addSourceColumnButton = new JButton("Add Source Column");
         addSourceColumnButton.addActionListener(new ActionListener() {
@@ -80,11 +95,19 @@ public class AddColumnsPanel extends JPanel {
         JPanel targetInputPanel = new JPanel(new GridLayout(4, 1, 5, 5));
         targetInputPanel.add(new JLabel("Target Table:"));
         targetTableCombo = new JComboBox<>();
+        targetTableCombo.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    updateTargetColumns();
+                }
+            }
+        });
         targetInputPanel.add(targetTableCombo);
         
         targetInputPanel.add(new JLabel("Column Name:"));
-        targetColumnField = new JTextField(20);
-        targetInputPanel.add(targetColumnField);
+        targetColumnCombo = new JComboBox<>();
+        targetInputPanel.add(targetColumnCombo);
         
         JButton addTargetColumnButton = new JButton("Add Target Column");
         addTargetColumnButton.addActionListener(new ActionListener() {
@@ -123,14 +146,113 @@ public class AddColumnsPanel extends JPanel {
         add(instructionLabel, BorderLayout.NORTH);
     }
     
+    private void updateSourceColumns() {
+        String tableName = (String) sourceTableCombo.getSelectedItem();
+        if (tableName == null) return;
+        
+        sourceColumnCombo.removeAllItems();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        
+        try {
+            // Get the source table with its data source
+            SourceTable sourceTable = wizard.getSourceTables().get(tableName);
+            if (sourceTable == null) return;
+            
+            // Find the data source this table belongs to
+            DataSource dataSource = findDataSourceForTable(sourceTable.getDataSourceName());
+            if (dataSource == null) return;
+            
+            // Get columns from database
+            Connection conn = DatabaseConnectionManager.getConnection(dataSource);
+            List<String> columns = DatabaseConnectionManager.getColumns(conn, tableName);
+            
+            for (String column : columns) {
+                sourceColumnCombo.addItem(column);
+            }
+            
+            if (conn != null) conn.close();
+        } catch (SQLException | ClassNotFoundException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error retrieving columns: " + e.getMessage(), 
+                "Database Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+    }
+    
+    private void updateTargetColumns() {
+        String tableName = (String) targetTableCombo.getSelectedItem();
+        if (tableName == null) return;
+        
+        targetColumnCombo.removeAllItems();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        
+        try {
+            // Get the target table with its data source
+            TargetTable targetTable = wizard.getTargetTables().get(tableName);
+            if (targetTable == null) return;
+            
+            // Find the data source this table belongs to
+            DataSource dataSource = findDataSourceForTable(targetTable.getDataSourceName());
+            if (dataSource == null) return;
+            
+            // Get columns from database
+            Connection conn = DatabaseConnectionManager.getConnection(dataSource);
+            List<String> columns = DatabaseConnectionManager.getColumns(conn, tableName);
+            
+            for (String column : columns) {
+                targetColumnCombo.addItem(column);
+            }
+            
+            if (conn != null) conn.close();
+        } catch (SQLException | ClassNotFoundException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error retrieving columns: " + e.getMessage(), 
+                "Database Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+    }
+    
+    private DataSource findDataSourceForTable(String dataSourceName) {
+        if (dataSourceName == null) {
+            // If not set, use the first available data source
+            List<DataSource> dataSources = wizard.getDataSources();
+            if (!dataSources.isEmpty()) {
+                return dataSources.get(0);
+            }
+            return null;
+        }
+        
+        // Find data source by name
+        for (DataSource ds : wizard.getDataSources()) {
+            if (ds.getName().equals(dataSourceName)) {
+                return ds;
+            }
+        }
+        return null;
+    }
+    
     private void addSourceColumn() {
         String tableName = (String) sourceTableCombo.getSelectedItem();
-        String columnName = sourceColumnField.getText().trim();
+        String columnName = (String) sourceColumnCombo.getSelectedItem();
         
-        if (tableName != null && !columnName.isEmpty()) {
+        if (tableName != null && columnName != null) {
+            // Check if column is already added
+            String columnKey = tableName + "." + columnName;
+            for (int i = 0; i < sourceColumnsModel.size(); i++) {
+                if (sourceColumnsModel.getElementAt(i).equals(columnKey)) {
+                    JOptionPane.showMessageDialog(this, 
+                        "This column has already been added.", 
+                        "Duplicate Column", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+            
             wizard.addSourceColumn(tableName, columnName);
-            sourceColumnsModel.addElement(tableName + "." + columnName);
-            sourceColumnField.setText("");
+            sourceColumnsModel.addElement(columnKey);
         }
     }
     
@@ -150,12 +272,22 @@ public class AddColumnsPanel extends JPanel {
     
     private void addTargetColumn() {
         String tableName = (String) targetTableCombo.getSelectedItem();
-        String columnName = targetColumnField.getText().trim();
+        String columnName = (String) targetColumnCombo.getSelectedItem();
         
-        if (tableName != null && !columnName.isEmpty()) {
+        if (tableName != null && columnName != null) {
+            // Check if column is already added
+            String columnKey = tableName + "." + columnName;
+            for (int i = 0; i < targetColumnsModel.size(); i++) {
+                if (targetColumnsModel.getElementAt(i).equals(columnKey)) {
+                    JOptionPane.showMessageDialog(this, 
+                        "This column has already been added.", 
+                        "Duplicate Column", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+            
             wizard.addTargetColumn(tableName, columnName);
-            targetColumnsModel.addElement(tableName + "." + columnName);
-            targetColumnField.setText("");
+            targetColumnsModel.addElement(columnKey);
         }
     }
     
@@ -186,6 +318,15 @@ public class AddColumnsPanel extends JPanel {
         
         for (String tableName : targetTables.keySet()) {
             targetTableCombo.addItem(tableName);
+        }
+        
+        // Update columns if tables are selected
+        if (sourceTableCombo.getItemCount() > 0) {
+            updateSourceColumns();
+        }
+        
+        if (targetTableCombo.getItemCount() > 0) {
+            updateTargetColumns();
         }
     }
 }

@@ -3,11 +3,14 @@ package com.datamap.ui;
 import com.datamap.model.*;
 import com.datamap.model.mapping.*;
 import com.datamap.util.Code;
+import com.datamap.util.DatabaseConnectionManager;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -144,6 +147,8 @@ public class DataMapWizard extends JFrame {
             case "databaseConfig":
                 nextPanel = "addTables";
                 dataSources = databaseConfigPanel.getDataSources();
+                // Refresh the tables panel with new data sources
+                addTablesPanel.refreshDataSources();
                 break;
             case "addTables":
                 nextPanel = "addColumns";
@@ -231,10 +236,17 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    // Data model management methods
+    // Data model management methods with data source support
     public void addSourceTable(String name, String... columns) {
         Table table = new Table(name, columns);
         SourceTable sourceTable = new SourceTable(table);
+        sourceTables.put(name, sourceTable);
+    }
+
+    // New method with data source support
+    public void addSourceTable(String name, DataSource dataSource, String... columns) {
+        Table table = new Table(name, columns);
+        SourceTable sourceTable = new SourceTable(table, dataSource.getName());
         sourceTables.put(name, sourceTable);
     }
 
@@ -273,6 +285,16 @@ public class DataMapWizard extends JFrame {
         if (sourceTable != null) {
             Table table = new Table(targetName, columns);
             TargetTable targetTable = new TargetTable(sourceTable, table);
+            targetTables.put(targetName, targetTable);
+        }
+    }
+
+    // New method with data source support
+    public void addTargetTable(String sourceName, String targetName, DataSource dataSource, String... columns) {
+        SourceTable sourceTable = sourceTables.get(sourceName);
+        if (sourceTable != null) {
+            Table table = new Table(targetName, columns);
+            TargetTable targetTable = new TargetTable(sourceTable, table, dataSource.getName());
             targetTables.put(targetName, targetTable);
         }
     }
@@ -497,7 +519,7 @@ public class DataMapWizard extends JFrame {
     }
 
     public String generateCode(){
-        return  Code.generateCode(sourceTables, targetTables, sourceColumns, targetColumns, mappings);
+        return Code.generateCode(sourceTables, targetTables, sourceColumns, targetColumns, mappings);
     }
 
     /**
@@ -542,8 +564,13 @@ public class DataMapWizard extends JFrame {
      * Refreshes the AddTablesPanel UI
      */
     private void refreshAddTablesPanel() {
-        // Get the field for sourceTablesModel using reflection
         try {
+            // Update data sources on AddTablesPanel
+            java.lang.reflect.Method refreshMethod = AddTablesPanel.class.getDeclaredMethod("refreshDataSources");
+            refreshMethod.setAccessible(true);
+            refreshMethod.invoke(addTablesPanel);
+
+            // Get the field for sourceTablesModel using reflection
             java.lang.reflect.Field sourceTablesModelField = AddTablesPanel.class.getDeclaredField("sourceTablesModel");
             sourceTablesModelField.setAccessible(true);
             DefaultListModel<String> sourceTablesModel = (DefaultListModel<String>)sourceTablesModelField.get(addTablesPanel);
@@ -552,34 +579,34 @@ public class DataMapWizard extends JFrame {
             targetTablesModelField.setAccessible(true);
             DefaultListModel<String> targetTablesModel = (DefaultListModel<String>)targetTablesModelField.get(addTablesPanel);
 
-            java.lang.reflect.Field sourceTableComboField = AddTablesPanel.class.getDeclaredField("sourceTableCombo");
-            sourceTableComboField.setAccessible(true);
-            JComboBox<String> sourceTableCombo = (JComboBox<String>)sourceTableComboField.get(addTablesPanel);
+            java.lang.reflect.Field sourceTableForTargetComboField = AddTablesPanel.class.getDeclaredField("sourceTableForTargetCombo");
+            sourceTableForTargetComboField.setAccessible(true);
+            JComboBox<String> sourceTableForTargetCombo = (JComboBox<String>)sourceTableForTargetComboField.get(addTablesPanel);
 
             // Clear current values
             sourceTablesModel.clear();
             targetTablesModel.clear();
-            sourceTableCombo.removeAllItems();
+            sourceTableForTargetCombo.removeAllItems();
 
             // Add source tables to model and combo
             for (String tableName : sourceTables.keySet()) {
                 sourceTablesModel.addElement(tableName);
-                sourceTableCombo.addItem(tableName);
+                sourceTableForTargetCombo.addItem(tableName);
             }
 
             // Add target tables to model
             for (String tableName : targetTables.keySet()) {
                 targetTablesModel.addElement(tableName);
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Refreshes the AddColumnsPanel UI
-     */
+    // Other methods remain the same
+    // ...
+    // (refreshAddColumnsPanel, refreshNoneMappingPanel, refreshDictMappingPanel,
+    // refreshConstantMappingPanel, refreshExternalConnectionPanel)
     private void refreshAddColumnsPanel() {
         try {
             java.lang.reflect.Field sourceColumnsModelField = AddColumnsPanel.class.getDeclaredField("sourceColumnsModel");
@@ -609,9 +636,6 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    /**
-     * Refreshes the NoneMappingPanel UI
-     */
     private void refreshNoneMappingPanel() {
         try {
             // Get access to the mappingsModel field
@@ -642,9 +666,6 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    /**
-     * Refreshes the DictMappingPanel UI
-     */
     private void refreshDictMappingPanel() {
         try {
             // Get access to the mappingsModel field
@@ -675,9 +696,6 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    /**
-     * Refreshes the ConstantMappingPanel UI
-     */
     private void refreshConstantMappingPanel() {
         try {
             // Get access to the mappingsModel field
@@ -706,9 +724,7 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    /**
-     * Refreshes the ExternalConnectionPanel UI
-     */
+
     private void refreshExternalConnectionPanel() {
         try {
             // Get access to the mappingsModel field
@@ -739,6 +755,114 @@ public class DataMapWizard extends JFrame {
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Get a data source by name from the list of configured data sources
+     * 
+     * @param name The name of the data source
+     * @return The data source or null if not found
+     */
+    public DataSource getDataSourceByName(String name) {
+        for (DataSource ds : dataSources) {
+            if (ds.getName().equals(name)) {
+                return ds;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Updates the database connections for all connected components
+     * This should be called whenever data sources are added/modified/removed
+     */
+    public void updateDatabaseConnections() {
+        // First, update the add tables panel
+        try {
+            if (addTablesPanel != null) {
+                java.lang.reflect.Method refreshMethod = AddTablesPanel.class.getDeclaredMethod("refreshDataSources");
+                refreshMethod.setAccessible(true);
+                refreshMethod.invoke(addTablesPanel);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        // Then, update columns if tables are selected
+        if (addColumnsPanel != null) {
+            addColumnsPanel.updateComponents();
+        }
+    }
+    
+    /**
+     * Get the table list from a data source
+     * 
+     * @param dataSource The data source to query
+     * @return A list of table names or an empty list if an error occurred
+     */
+    public List<String> getTablesFromDataSource(DataSource dataSource) {
+        List<String> tables = new ArrayList<>();
+        
+        try {
+            Connection conn = DatabaseConnectionManager.getConnection(dataSource);
+            tables = DatabaseConnectionManager.getTables(conn);
+            conn.close();
+        } catch (SQLException | ClassNotFoundException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error retrieving tables: " + e.getMessage(), 
+                "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+        
+        return tables;
+    }
+    
+    /**
+     * Get the column list from a specific table in a data source
+     * 
+     * @param dataSource The data source to query
+     * @param tableName The name of the table
+     * @return A list of column names or an empty list if an error occurred
+     */
+    public List<String> getColumnsFromTable(DataSource dataSource, String tableName) {
+        List<String> columns = new ArrayList<>();
+        
+        try {
+            Connection conn = DatabaseConnectionManager.getConnection(dataSource);
+            columns = DatabaseConnectionManager.getColumns(conn, tableName);
+            conn.close();
+        } catch (SQLException | ClassNotFoundException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error retrieving columns: " + e.getMessage(), 
+                "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+        
+        return columns;
+    }
+    
+    /**
+     * Updates the data source for an existing source table
+     * 
+     * @param tableName The name of the table to update
+     * @param dataSource The data source to associate with the table
+     */
+    public void updateSourceTableDataSource(String tableName, DataSource dataSource) {
+        SourceTable sourceTable = sourceTables.get(tableName);
+        if (sourceTable != null) {
+            sourceTable.setDataSourceName(dataSource.getName());
+        }
+    }
+    
+    /**
+     * Updates the data source for an existing target table
+     * 
+     * @param tableName The name of the table to update
+     * @param dataSource The data source to associate with the table
+     */
+    public void updateTargetTableDataSource(String tableName, DataSource dataSource) {
+        TargetTable targetTable = targetTables.get(tableName);
+        if (targetTable != null) {
+            targetTable.setDataSourceName(dataSource.getName());
         }
     }
 }
