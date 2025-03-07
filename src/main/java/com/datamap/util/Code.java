@@ -23,33 +23,20 @@ public class Code {
 
         // Define source tables
         for (SourceTable sourceTable : sourceTables.values()) {
-            code.append("SourceTable ").append(sourceTable.getTable().getName()).append(" = new SourceTable(new Table(\"")
-                    .append(sourceTable.getTable().getName()).append("\",");
+            code.append("SourceTable ").append(sourceTable.getTable().getName()).append(" = setSource(\"")
+                    .append(sourceTable.getTable().getName()).append("\" ");
 
-            List<String> columns = sourceTable.getTable().getColumns();
-            for (int i = 0; i < columns.size(); i++) {
-                code.append("\"").append(columns.get(i)).append("\"");
-                if (i < columns.size() - 1) {
-                    code.append(",");
-                }
-            }
-            code.append("));\n");
+
+            code.append(");\n");
         }
 
         // Define target tables
         for (TargetTable targetTable : targetTables.values()) {
-            code.append("TargetTable ").append(targetTable.getTable().getName()).append(" = new TargetTable(")
-                    .append(targetTable.getSourceTable().getTable().getName()).append(",new Table(\"")
-                    .append(targetTable.getTable().getName()).append("\",");
+            code.append("TargetTable ").append(targetTable.getTable().getName()).append(" = setTarget(")
+                    .append(targetTable.getSourceTable().getTable().getName()).append(", \"")
+                    .append(targetTable.getTable().getName()).append("\" ");
 
-            List<String> columns = targetTable.getTable().getColumns();
-            for (int i = 0; i < columns.size(); i++) {
-                code.append("\"").append(columns.get(i)).append("\"");
-                if (i < columns.size() - 1) {
-                    code.append(",");
-                }
-            }
-            code.append("));\n");
+            code.append(" );\n");
         }
 
         code.append("\n");
@@ -98,8 +85,8 @@ public class Code {
                 code.append(mapping.generateCode()).append("\n");
             } else if (mapping instanceof ExternalConnection) {
                 ExternalConnection externalMapping = (ExternalConnection) mapping;
-                code.append("try {\n");
-                code.append("    //查询[").append(externalMapping.getExternalSourceColumn().getTable().getName())
+
+                code.append("//查询[").append(externalMapping.getExternalSourceColumn().getTable().getName())
                         .append("].{").append(externalMapping.getExternalIdColumn().getName()).append("}为[")
                         .append(externalMapping.getSourceIdColumn().getTable().getName()).append("].{")
                         .append(externalMapping.getSourceIdColumn().getName()).append("}的[")
@@ -108,9 +95,7 @@ public class Code {
                         .append(externalMapping.getTargetColumn().getTable().getName()).append("的")
                         .append(externalMapping.getTargetColumn().getName()).append("\n");
                 code.append("    ").append(mapping.generateCode()).append("\n");
-                code.append("} catch (SQLException e) {\n");
-                code.append("    e.printStackTrace();\n");
-                code.append("}\n");
+
             }
         }
 
