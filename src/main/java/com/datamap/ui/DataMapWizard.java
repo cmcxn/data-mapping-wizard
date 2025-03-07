@@ -381,7 +381,7 @@ public class DataMapWizard extends JFrame {
         SourceColumn sourceColumn = sourceColumns.get(sourceTableName + "." + sourceColumnName);
 
         if (targetColumn != null && sourceColumn != null) {
-            Dict mapping = new Dict(targetColumn, dictType, sourceColumn, "OdsDaoKit.getSqlSession()");
+            Dict mapping = new Dict(targetColumn, dictType, sourceColumn );
             mappings.add(mapping);
         }
     }
@@ -406,8 +406,7 @@ public class DataMapWizard extends JFrame {
         if (targetColumn != null && externalSourceColumn != null &&
                 externalIdColumn != null && sourceIdColumn != null) {
             ExternalConnection mapping = new ExternalConnection(targetColumn, externalSourceColumn,
-                    externalIdColumn, sourceIdColumn,
-                    "OdsDaoKit.getSqlSession()");
+                    externalIdColumn, sourceIdColumn );
             mappings.add(mapping);
         }
     }

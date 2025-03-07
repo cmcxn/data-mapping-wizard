@@ -7,15 +7,15 @@ public class ExternalConnection extends Mapping {
     private SourceColumn externalSourceColumn;
     private SourceColumn externalIdColumn;
     private SourceColumn sourceIdColumn;
-    private String sqlSession;
+
     
     public ExternalConnection(TargetColumn targetColumn, SourceColumn externalSourceColumn, 
-                             SourceColumn externalIdColumn, SourceColumn sourceIdColumn, String sqlSession) {
+                             SourceColumn externalIdColumn, SourceColumn sourceIdColumn ) {
         super(targetColumn);
         this.externalSourceColumn = externalSourceColumn;
         this.externalIdColumn = externalIdColumn;
         this.sourceIdColumn = sourceIdColumn;
-        this.sqlSession = sqlSession;
+
     }
     
     public SourceColumn getExternalSourceColumn() {
@@ -29,10 +29,7 @@ public class ExternalConnection extends Mapping {
     public SourceColumn getSourceIdColumn() {
         return sourceIdColumn;
     }
-    
-    public String getSqlSession() {
-        return sqlSession;
-    }
+
     
     @Override
     public String generateCode() {
@@ -43,6 +40,6 @@ public class ExternalConnection extends Mapping {
         String sourceIdVarName = sourceIdColumn.getTable().getName() + "_" + sourceIdColumn.getName();
         
         return "set.add(new ExternalConnection(" + targetVarName + "," + externalSourceVarName + "," + 
-               externalIdVarName + "," + sourceIdVarName + "," + sqlSession + "));";
+               externalIdVarName + "," + sourceIdVarName +   "));";
     }
 }
