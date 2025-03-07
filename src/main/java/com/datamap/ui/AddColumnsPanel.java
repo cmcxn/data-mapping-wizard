@@ -13,6 +13,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -20,8 +21,8 @@ public class AddColumnsPanel extends JPanel {
     private DataMapWizard wizard;
     private JComboBox<String> sourceTableCombo;
     private JComboBox<String> targetTableCombo;
-    private JComboBox<String> sourceColumnCombo;
-    private JComboBox<String> targetColumnCombo;
+    private AutoCompleteComboBox sourceColumnCombo;
+    private AutoCompleteComboBox targetColumnCombo;
     private DefaultListModel<String> sourceColumnsModel;
     private DefaultListModel<String> targetColumnsModel;
     private JList<String> sourceColumnsList;
@@ -58,7 +59,7 @@ public class AddColumnsPanel extends JPanel {
         sourceInputPanel.add(sourceTableCombo);
         
         sourceInputPanel.add(new JLabel("Column Name:"));
-        sourceColumnCombo = new JComboBox<>();
+        sourceColumnCombo = new AutoCompleteComboBox();
         sourceInputPanel.add(sourceColumnCombo);
         
         JButton addSourceColumnButton = new JButton("Add Source Column");
@@ -106,7 +107,7 @@ public class AddColumnsPanel extends JPanel {
         targetInputPanel.add(targetTableCombo);
         
         targetInputPanel.add(new JLabel("Column Name:"));
-        targetColumnCombo = new JComboBox<>();
+        targetColumnCombo = new AutoCompleteComboBox();
         targetInputPanel.add(targetColumnCombo);
         
         JButton addTargetColumnButton = new JButton("Add Target Column");
@@ -150,7 +151,6 @@ public class AddColumnsPanel extends JPanel {
         String tableName = (String) sourceTableCombo.getSelectedItem();
         if (tableName == null) return;
         
-        sourceColumnCombo.removeAllItems();
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         
         try {
@@ -166,9 +166,11 @@ public class AddColumnsPanel extends JPanel {
             Connection conn = DatabaseConnectionManager.getConnection(dataSource);
             List<String> columns = DatabaseConnectionManager.getColumns(conn, tableName);
             
-            for (String column : columns) {
-                sourceColumnCombo.addItem(column);
-            }
+            // Sort columns alphabetically
+            Collections.sort(columns);
+            
+            // Update the autocomplete items
+            sourceColumnCombo.setAutoCompleteItems(columns);
             
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
@@ -185,7 +187,6 @@ public class AddColumnsPanel extends JPanel {
         String tableName = (String) targetTableCombo.getSelectedItem();
         if (tableName == null) return;
         
-        targetColumnCombo.removeAllItems();
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         
         try {
@@ -201,9 +202,11 @@ public class AddColumnsPanel extends JPanel {
             Connection conn = DatabaseConnectionManager.getConnection(dataSource);
             List<String> columns = DatabaseConnectionManager.getColumns(conn, tableName);
             
-            for (String column : columns) {
-                targetColumnCombo.addItem(column);
-            }
+            // Sort columns alphabetically
+            Collections.sort(columns);
+            
+            // Update the autocomplete items
+            targetColumnCombo.setAutoCompleteItems(columns);
             
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
@@ -237,9 +240,9 @@ public class AddColumnsPanel extends JPanel {
     
     private void addSourceColumn() {
         String tableName = (String) sourceTableCombo.getSelectedItem();
-        String columnName = (String) sourceColumnCombo.getSelectedItem();
+        String columnName = sourceColumnCombo.getSelectedText();
         
-        if (tableName != null && columnName != null) {
+        if (tableName != null && columnName != null && !columnName.trim().isEmpty()) {
             // Check if column is already added
             String columnKey = tableName + "." + columnName;
             for (int i = 0; i < sourceColumnsModel.size(); i++) {
@@ -253,6 +256,10 @@ public class AddColumnsPanel extends JPanel {
             
             wizard.addSourceColumn(tableName, columnName);
             sourceColumnsModel.addElement(columnKey);
+        } else {
+            JOptionPane.showMessageDialog(this, 
+                "Please select or enter a valid column name.", 
+                "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
     
@@ -272,9 +279,9 @@ public class AddColumnsPanel extends JPanel {
     
     private void addTargetColumn() {
         String tableName = (String) targetTableCombo.getSelectedItem();
-        String columnName = (String) targetColumnCombo.getSelectedItem();
+        String columnName = targetColumnCombo.getSelectedText();
         
-        if (tableName != null && columnName != null) {
+        if (tableName != null && columnName != null && !columnName.trim().isEmpty()) {
             // Check if column is already added
             String columnKey = tableName + "." + columnName;
             for (int i = 0; i < targetColumnsModel.size(); i++) {
@@ -288,6 +295,10 @@ public class AddColumnsPanel extends JPanel {
             
             wizard.addTargetColumn(tableName, columnName);
             targetColumnsModel.addElement(columnKey);
+        } else {
+            JOptionPane.showMessageDialog(this, 
+                "Please select or enter a valid column name.", 
+                "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
     
@@ -306,17 +317,27 @@ public class AddColumnsPanel extends JPanel {
     }
     
     public void updateComponents() {
+        // Clear and update the source table combo
         sourceTableCombo.removeAllItems();
-        targetTableCombo.removeAllItems();
-        
         Map<String, SourceTable> sourceTables = wizard.getSourceTables();
-        Map<String, TargetTable> targetTables = wizard.getTargetTables();
         
-        for (String tableName : sourceTables.keySet()) {
+        // Convert to sorted array for alphabetical order
+        String[] sourceTableNames = sourceTables.keySet().toArray(new String[0]);
+        java.util.Arrays.sort(sourceTableNames);
+        
+        for (String tableName : sourceTableNames) {
             sourceTableCombo.addItem(tableName);
         }
         
-        for (String tableName : targetTables.keySet()) {
+        // Clear and update the target table combo
+        targetTableCombo.removeAllItems();
+        Map<String, TargetTable> targetTables = wizard.getTargetTables();
+        
+        // Convert to sorted array for alphabetical order
+        String[] targetTableNames = targetTables.keySet().toArray(new String[0]);
+        java.util.Arrays.sort(targetTableNames);
+        
+        for (String tableName : targetTableNames) {
             targetTableCombo.addItem(tableName);
         }
         

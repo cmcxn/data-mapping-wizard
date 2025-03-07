@@ -11,6 +11,8 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class AddTablesPanel extends JPanel {
@@ -19,10 +21,10 @@ public class AddTablesPanel extends JPanel {
     private DefaultListModel<String> targetTablesModel;
     
     private JComboBox<DataSource> sourceDataSourceCombo;
-    private JComboBox<String> sourceTableComboBox;
+    private AutoCompleteComboBox sourceTableComboBox;
     private JComboBox<DataSource> targetDataSourceCombo;
-    private JComboBox<String> targetTableComboBox;
-    private JComboBox<String> sourceTableForTargetCombo;
+    private AutoCompleteComboBox targetTableComboBox;
+    private AutoCompleteComboBox sourceTableForTargetCombo;
     private JList<String> sourceTablesList;
     private JList<String> targetTablesList;
     
@@ -68,7 +70,7 @@ public class AddTablesPanel extends JPanel {
         sourceInputPanel.add(sourceDataSourceCombo);
         
         sourceInputPanel.add(new JLabel("Source Table:"));
-        sourceTableComboBox = new JComboBox<>();
+        sourceTableComboBox = new AutoCompleteComboBox();
         sourceInputPanel.add(sourceTableComboBox);
         
         JButton addSourceButton = new JButton("Add Source Table");
@@ -104,7 +106,7 @@ public class AddTablesPanel extends JPanel {
         
         JPanel targetInputPanel = new JPanel(new GridLayout(6, 1, 5, 5));
         targetInputPanel.add(new JLabel("Based on Source Table:"));
-        sourceTableForTargetCombo = new JComboBox<>();
+        sourceTableForTargetCombo = new AutoCompleteComboBox();
         sourceTableForTargetCombo.setName("sourceTableForTargetCombo"); // for refreshing
         targetInputPanel.add(sourceTableForTargetCombo);
         
@@ -132,7 +134,7 @@ public class AddTablesPanel extends JPanel {
         targetInputPanel.add(targetDataSourceCombo);
         
         targetInputPanel.add(new JLabel("Target Table:"));
-        targetTableComboBox = new JComboBox<>();
+        targetTableComboBox = new AutoCompleteComboBox();
         targetInputPanel.add(targetTableComboBox);
         
         JButton addTargetButton = new JButton("Add Target Table");
@@ -198,16 +200,17 @@ public class AddTablesPanel extends JPanel {
         DataSource selectedDS = (DataSource) sourceDataSourceCombo.getSelectedItem();
         if (selectedDS == null) return;
         
-        sourceTableComboBox.removeAllItems();
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         
         try {
             Connection conn = DatabaseConnectionManager.getConnection(selectedDS);
             List<String> tables = DatabaseConnectionManager.getTables(conn);
             
-            for (String table : tables) {
-                sourceTableComboBox.addItem(table);
-            }
+            // Sort tables alphabetically
+            Collections.sort(tables);
+            
+            // Update the autocomplete items
+            sourceTableComboBox.setAutoCompleteItems(tables);
             
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
@@ -224,16 +227,17 @@ public class AddTablesPanel extends JPanel {
         DataSource selectedDS = (DataSource) targetDataSourceCombo.getSelectedItem();
         if (selectedDS == null) return;
         
-        targetTableComboBox.removeAllItems();
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         
         try {
             Connection conn = DatabaseConnectionManager.getConnection(selectedDS);
             List<String> tables = DatabaseConnectionManager.getTables(conn);
             
-            for (String table : tables) {
-                targetTableComboBox.addItem(table);
-            }
+            // Sort tables alphabetically
+            Collections.sort(tables);
+            
+            // Update the autocomplete items
+            targetTableComboBox.setAutoCompleteItems(tables);
             
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
@@ -245,26 +249,36 @@ public class AddTablesPanel extends JPanel {
             setCursor(Cursor.getDefaultCursor());
         }
     }
-    
+
     private void addSourceTable() {
-        String tableName = (String) sourceTableComboBox.getSelectedItem();
+        String tableName = sourceTableComboBox.getSelectedText();
         DataSource dataSource = (DataSource) sourceDataSourceCombo.getSelectedItem();
-        
-        if (tableName != null && dataSource != null) {
+
+        if (tableName != null && !tableName.trim().isEmpty() && dataSource != null) {
             // Check if the table already exists in the list
             for (int i = 0; i < sourceTablesModel.size(); i++) {
                 if (sourceTablesModel.getElementAt(i).equals(tableName)) {
-                    JOptionPane.showMessageDialog(this, 
-                        "This table has already been added.", 
-                        "Duplicate Table", JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.showMessageDialog(this,
+                            "This table has already been added.",
+                            "Duplicate Table", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
             }
-            
+
             // Add the source table with data source info
             wizard.addSourceTable(tableName, dataSource);
             sourceTablesModel.addElement(tableName);
-            sourceTableForTargetCombo.addItem(tableName);
+
+            // Update the source table for target combo
+            List<String> sourceTables = new ArrayList<>();
+            for (int i = 0; i < sourceTablesModel.size(); i++) {
+                sourceTables.add(sourceTablesModel.getElementAt(i));
+            }
+            sourceTableForTargetCombo.setAutoCompleteItems(sourceTables);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Please select or enter a valid table name.",
+                    "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
     
@@ -274,25 +288,26 @@ public class AddTablesPanel extends JPanel {
             String selectedTable = sourceTablesModel.getElementAt(selectedIndex);
             sourceTablesModel.remove(selectedIndex);
             
-            // Remove from source table for target combo
-            for (int i = 0; i < sourceTableForTargetCombo.getItemCount(); i++) {
-                if (sourceTableForTargetCombo.getItemAt(i).equals(selectedTable)) {
-                    sourceTableForTargetCombo.removeItemAt(i);
-                    break;
-                }
-            }
-            
             // Delete from the data model
             wizard.removeSourceTable(selectedTable);
+            
+            // Update the source table for target combo
+            List<String> sourceTables = new ArrayList<>();
+            for (int i = 0; i < sourceTablesModel.size(); i++) {
+                sourceTables.add(sourceTablesModel.getElementAt(i));
+            }
+            sourceTableForTargetCombo.setAutoCompleteItems(sourceTables);
         }
     }
     
     private void addTargetTable() {
-        String sourceTableName = (String) sourceTableForTargetCombo.getSelectedItem();
-        String targetTableName = (String) targetTableComboBox.getSelectedItem();
+        String sourceTableName = sourceTableForTargetCombo.getSelectedText();
+        String targetTableName = targetTableComboBox.getSelectedText();
         DataSource dataSource = (DataSource) targetDataSourceCombo.getSelectedItem();
         
-        if (sourceTableName != null && targetTableName != null && dataSource != null) {
+        if (sourceTableName != null && !sourceTableName.trim().isEmpty() && 
+            targetTableName != null && !targetTableName.trim().isEmpty() && 
+            dataSource != null) {
             // Check if the target table already exists in the list
             for (int i = 0; i < targetTablesModel.size(); i++) {
                 if (targetTablesModel.getElementAt(i).equals(targetTableName)) {
@@ -303,9 +318,28 @@ public class AddTablesPanel extends JPanel {
                 }
             }
             
-            // Add the target table with data source info
-            wizard.addTargetTable(sourceTableName, targetTableName, dataSource);
-            targetTablesModel.addElement(targetTableName);
+            // Check if source table exists
+            boolean sourceExists = false;
+            for (int i = 0; i < sourceTablesModel.size(); i++) {
+                if (sourceTablesModel.getElementAt(i).equals(sourceTableName)) {
+                    sourceExists = true;
+                    break;
+                }
+            }
+            
+            if (sourceExists) {
+                // Add the target table with data source info
+                wizard.addTargetTable(sourceTableName, targetTableName, dataSource);
+                targetTablesModel.addElement(targetTableName);
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "Source table '" + sourceTableName + "' does not exist. Please add it first.", 
+                    "Invalid Source", JOptionPane.WARNING_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, 
+                "Please select or enter valid table names.", 
+                "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
     
@@ -322,5 +356,12 @@ public class AddTablesPanel extends JPanel {
     
     public void refreshDataSources() {
         populateDataSources();
+        
+        // Update the source table for target combo with currently added tables
+        List<String> sourceTables = new ArrayList<>();
+        for (int i = 0; i < sourceTablesModel.size(); i++) {
+            sourceTables.add(sourceTablesModel.getElementAt(i));
+        }
+        sourceTableForTargetCombo.setAutoCompleteItems(sourceTables);
     }
 }
