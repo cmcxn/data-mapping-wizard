@@ -76,6 +76,46 @@ public class JsonConfig {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class LeftJoinConfig {
+        private String leftTable;
+        private String leftColumn;
+        private String rightTable;
+        private String rightColumn;
+
+        public String getLeftTable() {
+            return leftTable;
+        }
+
+        public void setLeftTable(String leftTable) {
+            this.leftTable = leftTable;
+        }
+
+        public String getLeftColumn() {
+            return leftColumn;
+        }
+
+        public void setLeftColumn(String leftColumn) {
+            this.leftColumn = leftColumn;
+        }
+
+        public String getRightTable() {
+            return rightTable;
+        }
+
+        public void setRightTable(String rightTable) {
+            this.rightTable = rightTable;
+        }
+
+        public String getRightColumn() {
+            return rightColumn;
+        }
+
+        public void setRightColumn(String rightColumn) {
+            this.rightColumn = rightColumn;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class MappingConfig {
         private String type; // "None", "Dict", "Constant", "ExternalConnection"
         private String targetTable;
@@ -85,11 +125,18 @@ public class JsonConfig {
         private String dictType; // For Dict
         private String constantValue; // For Constant
         // For ExternalConnection
+        private String finalSelectTable;  // Renamed from externalTable
+        private String finalSelectColumn; // Renamed from externalColumn
+        private String finalIdColumn;     // Renamed from externalIdColumn
+        private String sourceIdTable;
+        private String sourceIdColumn;
+        // For LEFT JOINs in ExternalConnection
+        private List<LeftJoinConfig> leftJoins = new ArrayList<>();
+
+        // Added for backward compatibility
         private String externalTable;
         private String externalColumn;
         private String externalIdColumn;
-        private String sourceIdTable;
-        private String sourceIdColumn;
 
         public String getType() {
             return type;
@@ -147,6 +194,55 @@ public class JsonConfig {
             this.constantValue = constantValue;
         }
 
+        public String getFinalSelectTable() {
+            return finalSelectTable != null ? finalSelectTable : externalTable; // Handle backward compatibility
+        }
+
+        public void setFinalSelectTable(String finalSelectTable) {
+            this.finalSelectTable = finalSelectTable;
+        }
+
+        public String getFinalSelectColumn() {
+            return finalSelectColumn != null ? finalSelectColumn : externalColumn; // Handle backward compatibility
+        }
+
+        public void setFinalSelectColumn(String finalSelectColumn) {
+            this.finalSelectColumn = finalSelectColumn;
+        }
+
+        public String getFinalIdColumn() {
+            return finalIdColumn != null ? finalIdColumn : externalIdColumn; // Handle backward compatibility
+        }
+
+        public void setFinalIdColumn(String finalIdColumn) {
+            this.finalIdColumn = finalIdColumn;
+        }
+
+        public String getSourceIdTable() {
+            return sourceIdTable;
+        }
+
+        public void setSourceIdTable(String sourceIdTable) {
+            this.sourceIdTable = sourceIdTable;
+        }
+
+        public String getSourceIdColumn() {
+            return sourceIdColumn;
+        }
+
+        public void setSourceIdColumn(String sourceIdColumn) {
+            this.sourceIdColumn = sourceIdColumn;
+        }
+
+        public List<LeftJoinConfig> getLeftJoins() {
+            return leftJoins;
+        }
+
+        public void setLeftJoins(List<LeftJoinConfig> leftJoins) {
+            this.leftJoins = leftJoins;
+        }
+
+        // For backward compatibility
         public String getExternalTable() {
             return externalTable;
         }
@@ -169,22 +265,6 @@ public class JsonConfig {
 
         public void setExternalIdColumn(String externalIdColumn) {
             this.externalIdColumn = externalIdColumn;
-        }
-
-        public String getSourceIdTable() {
-            return sourceIdTable;
-        }
-
-        public void setSourceIdTable(String sourceIdTable) {
-            this.sourceIdTable = sourceIdTable;
-        }
-
-        public String getSourceIdColumn() {
-            return sourceIdColumn;
-        }
-
-        public void setSourceIdColumn(String sourceIdColumn) {
-            this.sourceIdColumn = sourceIdColumn;
         }
     }
 
@@ -235,15 +315,25 @@ public class JsonConfig {
                 mappingConfig.setTargetColumn(constantMapping.getTargetColumn().getName());
                 mappingConfig.setConstantValue(constantMapping.getConstantValue());
             } else if (mapping instanceof ExternalConnection) {
-                ExternalConnection exMapping = (ExternalConnection) mapping;
+                ExternalConnection ecMapping = (ExternalConnection) mapping;
                 mappingConfig.setType("ExternalConnection");
-                mappingConfig.setTargetTable(exMapping.getTargetColumn().getTable().getName());
-                mappingConfig.setTargetColumn(exMapping.getTargetColumn().getName());
-                mappingConfig.setExternalTable(exMapping.getExternalSourceColumn().getTable().getName());
-                mappingConfig.setExternalColumn(exMapping.getExternalSourceColumn().getName());
-                mappingConfig.setExternalIdColumn(exMapping.getExternalIdColumn().getName());
-                mappingConfig.setSourceIdTable(exMapping.getSourceIdColumn().getTable().getName());
-                mappingConfig.setSourceIdColumn(exMapping.getSourceIdColumn().getName());
+                mappingConfig.setTargetTable(ecMapping.getTargetColumn().getTable().getName());
+                mappingConfig.setTargetColumn(ecMapping.getTargetColumn().getName());
+                mappingConfig.setFinalSelectTable(ecMapping.getFinalSelectColumn().getTable().getName());
+                mappingConfig.setFinalSelectColumn(ecMapping.getFinalSelectColumn().getName());
+                mappingConfig.setFinalIdColumn(ecMapping.getFinalIdColumn().getName());
+                mappingConfig.setSourceIdTable(ecMapping.getSourceIdColumn().getTable().getName());
+                mappingConfig.setSourceIdColumn(ecMapping.getSourceIdColumn().getName());
+
+                // Handle LEFT JOINs
+                for (LeftJoin join : ecMapping.getJoins()) {
+                    LeftJoinConfig joinConfig = new LeftJoinConfig();
+                    joinConfig.setLeftTable(join.getLeftColumn().getTable().getName());
+                    joinConfig.setLeftColumn(join.getLeftColumn().getName());
+                    joinConfig.setRightTable(join.getRightColumn().getTable().getName());
+                    joinConfig.setRightColumn(join.getRightColumn().getName());
+                    mappingConfig.getLeftJoins().add(joinConfig);
+                }
             }
 
             config.getMappings().add(mappingConfig);

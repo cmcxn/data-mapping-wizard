@@ -86,20 +86,43 @@ public class Code {
             } else if (mapping instanceof ExternalConnection) {
                 ExternalConnection externalMapping = (ExternalConnection) mapping;
 
-                code.append("//查询[").append(externalMapping.getExternalSourceColumn().getTable().getName())
-                        .append("].{").append(externalMapping.getExternalIdColumn().getName()).append("}为[")
+                StringBuilder commentBuilder = new StringBuilder();
+                commentBuilder.append("//查询[").append(externalMapping.getFinalSelectColumn().getTable().getName())
+                        .append("].{").append(externalMapping.getFinalIdColumn().getName()).append("}为[")
                         .append(externalMapping.getSourceIdColumn().getTable().getName()).append("].{")
                         .append(externalMapping.getSourceIdColumn().getName()).append("}的[")
-                        .append(externalMapping.getExternalSourceColumn().getTable().getName()).append("].{")
-                        .append(externalMapping.getExternalSourceColumn().getName()).append("}-->")
-                        .append(externalMapping.getTargetColumn().getTable().getName()).append("的")
-                        .append(externalMapping.getTargetColumn().getName()).append("\n");
-                code.append("    ").append(mapping.generateCode()).append("\n");
-
+                        .append(externalMapping.getFinalSelectColumn().getTable().getName()).append("].{")
+                        .append(externalMapping.getFinalSelectColumn().getName()).append("}-->");
+                
+                // Add LEFT JOIN comments if any
+                List<LeftJoin> joins = externalMapping.getJoins();
+                if (!joins.isEmpty()) {
+                    commentBuilder.append(" 通过");
+                    for (int i = 0; i < joins.size(); i++) {
+                        LeftJoin join = joins.get(i);
+                        if (i > 0) {
+                            commentBuilder.append(" 和");
+                        }
+                        commentBuilder.append(" LEFT JOIN ")
+                                    .append(join.getLeftColumn().getTable().getName())
+                                    .append(".")
+                                    .append(join.getLeftColumn().getName())
+                                    .append(" = ")
+                                    .append(join.getRightColumn().getTable().getName())
+                                    .append(".")
+                                    .append(join.getRightColumn().getName());
+                    }
+                }
+                
+                commentBuilder.append(externalMapping.getTargetColumn().getTable().getName())
+                            .append("的")
+                            .append(externalMapping.getTargetColumn().getName());
+                
+                code.append(commentBuilder.toString()).append("\n");
+                code.append("    ").append(externalMapping.generateCode()).append("\n");
             }
         }
 
         return code.toString();
     }
-
 }

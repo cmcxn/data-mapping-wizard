@@ -2,23 +2,31 @@ package com.datamap.ui;
 
 import com.datamap.model.SourceColumn;
 import com.datamap.model.TargetColumn;
+import com.datamap.model.mapping.LeftJoin;
 
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ExternalConnectionPanel extends JPanel {
     private DataMapWizard wizard;
     private JComboBox<String> targetColumnCombo;
-    private JComboBox<String> externalTableCombo;
-    private JComboBox<String> externalColumnCombo;
-    private JComboBox<String> externalIdColumnCombo;
+    private JComboBox<String> finalSelectTableCombo;
+    private JComboBox<String> finalSelectColumnCombo;
+    private JComboBox<String> finalIdColumnCombo;
     private JComboBox<String> sourceTableCombo;
     private JComboBox<String> sourceIdColumnCombo;
     private DefaultListModel<String> mappingsModel;
     private JList<String> mappingsList;
+    
+    // Components for LEFT JOIN support
+    private JPanel joinsPanel;
+    private List<JoinRow> joinRows = new ArrayList<>();
 
     public ExternalConnectionPanel(DataMapWizard wizard) {
         this.wizard = wizard;
@@ -40,17 +48,17 @@ public class ExternalConnectionPanel extends JPanel {
         targetColumnCombo = new JComboBox<>();
         inputPanel.add(targetColumnCombo);
 
-        inputPanel.add(new JLabel("External Table:"));
-        externalTableCombo = new JComboBox<>();
-        inputPanel.add(externalTableCombo);
+        inputPanel.add(new JLabel("Final Select Table:"));
+        finalSelectTableCombo = new JComboBox<>();
+        inputPanel.add(finalSelectTableCombo);
 
-        inputPanel.add(new JLabel("External Column:"));
-        externalColumnCombo = new JComboBox<>();
-        inputPanel.add(externalColumnCombo);
+        inputPanel.add(new JLabel("Final Select Column:"));
+        finalSelectColumnCombo = new JComboBox<>();
+        inputPanel.add(finalSelectColumnCombo);
 
-        inputPanel.add(new JLabel("External ID Column:"));
-        externalIdColumnCombo = new JComboBox<>();
-        inputPanel.add(externalIdColumnCombo);
+        inputPanel.add(new JLabel("Final ID Column:"));
+        finalIdColumnCombo = new JComboBox<>();
+        inputPanel.add(finalIdColumnCombo);
 
         inputPanel.add(new JLabel("Source Table:"));
         sourceTableCombo = new JComboBox<>();
@@ -59,6 +67,28 @@ public class ExternalConnectionPanel extends JPanel {
         inputPanel.add(new JLabel("Source ID Column:"));
         sourceIdColumnCombo = new JComboBox<>();
         inputPanel.add(sourceIdColumnCombo);
+
+        // LEFT JOIN panel
+        JPanel joinsPanelContainer = new JPanel(new BorderLayout(5, 5));
+        joinsPanelContainer.setBorder(BorderFactory.createTitledBorder("LEFT JOIN Relationships"));
+        
+        joinsPanel = new JPanel();
+        joinsPanel.setLayout(new BoxLayout(joinsPanel, BoxLayout.Y_AXIS));
+        JScrollPane joinsScrollPane = new JScrollPane(joinsPanel);
+        joinsScrollPane.setPreferredSize(new Dimension(500, 150));
+        
+        JPanel joinButtonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton addJoinButton = new JButton("Add LEFT JOIN");
+        addJoinButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addJoinRow();
+            }
+        });
+        joinButtonPanel.add(addJoinButton);
+        
+        joinsPanelContainer.add(joinsScrollPane, BorderLayout.CENTER);
+        joinsPanelContainer.add(joinButtonPanel, BorderLayout.SOUTH);
 
         // Mappings panel
         JPanel mappingsPanel = new JPanel(new BorderLayout());
@@ -89,7 +119,12 @@ public class ExternalConnectionPanel extends JPanel {
         buttonPanel.add(addMappingButton);
         buttonPanel.add(deleteMappingButton);
 
-        contentPanel.add(inputPanel, BorderLayout.NORTH);
+        // Main content assembly
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(inputPanel, BorderLayout.NORTH);
+        topPanel.add(joinsPanelContainer, BorderLayout.CENTER);
+        
+        contentPanel.add(topPanel, BorderLayout.NORTH);
         contentPanel.add(mappingsPanel, BorderLayout.CENTER);
         contentPanel.add(buttonPanel, BorderLayout.SOUTH);
 
@@ -107,34 +142,94 @@ public class ExternalConnectionPanel extends JPanel {
             }
         });
 
-        externalTableCombo.addActionListener(new ActionListener() {
+        finalSelectTableCombo.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                updateExternalColumnCombos();
+                updateFinalSelectColumnCombos();
             }
         });
+    }
+    
+    private void addJoinRow() {
+        JoinRow joinRow = new JoinRow();
+        joinRows.add(joinRow);
+        joinsPanel.add(joinRow);
+        joinsPanel.revalidate();
+        joinsPanel.repaint();
     }
 
     private void addMapping() {
         String targetColumnKey = (String) targetColumnCombo.getSelectedItem();
-        String externalTableName = (String) externalTableCombo.getSelectedItem();
-        String externalColumnName = (String) externalColumnCombo.getSelectedItem();
-        String externalIdColumnName = (String) externalIdColumnCombo.getSelectedItem();
+        String finalSelectTableName = (String) finalSelectTableCombo.getSelectedItem();
+        String finalSelectColumnName = (String) finalSelectColumnCombo.getSelectedItem();
+        String finalIdColumnName = (String) finalIdColumnCombo.getSelectedItem();
         String sourceTableName = (String) sourceTableCombo.getSelectedItem();
         String sourceIdColumnName = (String) sourceIdColumnCombo.getSelectedItem();
 
-        if (targetColumnKey != null && externalTableName != null && externalColumnName != null &&
-                externalIdColumnName != null && sourceTableName != null && sourceIdColumnName != null) {
+        if (targetColumnKey != null && finalSelectTableName != null && finalSelectColumnName != null &&
+                finalIdColumnName != null && sourceTableName != null && sourceIdColumnName != null) {
 
             String[] targetParts = targetColumnKey.split("\\.");
 
             if (targetParts.length == 2) {
-                wizard.addExternalConnectionMapping(targetParts[0], targetParts[1],
-                        externalTableName, externalColumnName,
-                        externalIdColumnName, sourceTableName, sourceIdColumnName);
+                int mappingIndex = wizard.addExternalConnectionMapping(targetParts[0], targetParts[1],
+                        finalSelectTableName, finalSelectColumnName,
+                        finalIdColumnName, sourceTableName, sourceIdColumnName);
+                
+                // Add LEFT JOIN relationships if any
+                for (JoinRow joinRow : joinRows) {
+                    String leftTableName = (String) joinRow.getLeftTableCombo().getSelectedItem();
+                    String leftColumnName = (String) joinRow.getLeftColumnCombo().getSelectedItem();
+                    String rightTableName = (String) joinRow.getRightTableCombo().getSelectedItem();
+                    String rightColumnName = (String) joinRow.getRightColumnCombo().getSelectedItem();
+                    
+                    if (leftTableName != null && leftColumnName != null && 
+                        rightTableName != null && rightColumnName != null) {
+                        wizard.addLeftJoinToExternalConnection(mappingIndex, leftTableName, leftColumnName, 
+                                                              rightTableName, rightColumnName);
+                    }
+                }
 
-                mappingsModel.addElement(targetColumnKey + " <- " + externalTableName + "." +
-                        externalColumnName + " (Join on " + sourceTableName + "." + sourceIdColumnName + ")");
+                // Create display string for the mapping
+                StringBuilder mappingDisplay = new StringBuilder();
+                mappingDisplay.append(targetColumnKey)
+                             .append(" <- ")
+                             .append(finalSelectTableName)
+                             .append(".")
+                             .append(finalSelectColumnName)
+                             .append(" (Join on ")
+                             .append(sourceTableName)
+                             .append(".")
+                             .append(sourceIdColumnName)
+                             .append(")");
+                
+                // Add LEFT JOIN info if any
+                if (!joinRows.isEmpty()) {
+                    mappingDisplay.append(" with LEFT JOINs: ");
+                    for (int i = 0; i < joinRows.size(); i++) {
+                        JoinRow joinRow = joinRows.get(i);
+                        String leftTableName = (String) joinRow.getLeftTableCombo().getSelectedItem();
+                        String leftColumnName = (String) joinRow.getLeftColumnCombo().getSelectedItem();
+                        String rightTableName = (String) joinRow.getRightTableCombo().getSelectedItem();
+                        String rightColumnName = (String) joinRow.getRightColumnCombo().getSelectedItem();
+                        
+                        if (i > 0) {
+                            mappingDisplay.append(", ");
+                        }
+                        mappingDisplay.append(leftTableName)
+                                     .append(".")
+                                     .append(leftColumnName)
+                                     .append(" = ")
+                                     .append(rightTableName)
+                                     .append(".")
+                                     .append(rightColumnName);
+                    }
+                }
+                
+                mappingsModel.addElement(mappingDisplay.toString());
+                
+                // Clear join rows after adding the mapping
+                clearJoinRows();
             }
         }
     }
@@ -145,6 +240,13 @@ public class ExternalConnectionPanel extends JPanel {
             mappingsModel.remove(selectedIndex);
             wizard.removeMapping(selectedIndex, "ExternalConnection");
         }
+    }
+    
+    private void clearJoinRows() {
+        joinRows.clear();
+        joinsPanel.removeAll();
+        joinsPanel.revalidate();
+        joinsPanel.repaint();
     }
 
     private void updateSourceIdColumnCombo() {
@@ -161,17 +263,17 @@ public class ExternalConnectionPanel extends JPanel {
         }
     }
 
-    private void updateExternalColumnCombos() {
-        externalColumnCombo.removeAllItems();
-        externalIdColumnCombo.removeAllItems();
+    private void updateFinalSelectColumnCombos() {
+        finalSelectColumnCombo.removeAllItems();
+        finalIdColumnCombo.removeAllItems();
 
-        String selectedExternalTable = (String) externalTableCombo.getSelectedItem();
-        if (selectedExternalTable != null) {
+        String selectedFinalSelectTable = (String) finalSelectTableCombo.getSelectedItem();
+        if (selectedFinalSelectTable != null) {
             for (Map.Entry<String, SourceColumn> entry : wizard.getSourceColumns().entrySet()) {
-                if (entry.getKey().startsWith(selectedExternalTable + ".")) {
-                    String columnName = entry.getKey().substring(selectedExternalTable.length() + 1);
-                    externalColumnCombo.addItem(columnName);
-                    externalIdColumnCombo.addItem(columnName);
+                if (entry.getKey().startsWith(selectedFinalSelectTable + ".")) {
+                    String columnName = entry.getKey().substring(selectedFinalSelectTable.length() + 1);
+                    finalSelectColumnCombo.addItem(columnName);
+                    finalIdColumnCombo.addItem(columnName);
                 }
             }
         }
@@ -179,7 +281,7 @@ public class ExternalConnectionPanel extends JPanel {
 
     public void updateComponents() {
         targetColumnCombo.removeAllItems();
-        externalTableCombo.removeAllItems();
+        finalSelectTableCombo.removeAllItems();
         sourceTableCombo.removeAllItems();
 
         Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
@@ -204,12 +306,127 @@ public class ExternalConnectionPanel extends JPanel {
 
             if (!exists) {
                 sourceTableCombo.addItem(tableName);
-                externalTableCombo.addItem(tableName);
+                finalSelectTableCombo.addItem(tableName);
             }
         }
 
         // Initialize dependent comboboxes
         updateSourceIdColumnCombo();
-        updateExternalColumnCombos();
+        updateFinalSelectColumnCombos();
+        
+        // Clear join rows
+        clearJoinRows();
+    }
+    
+    // Inner class for LEFT JOIN row
+    private class JoinRow extends JPanel {
+        private JComboBox<String> leftTableCombo;
+        private JComboBox<String> leftColumnCombo;
+        private JComboBox<String> rightTableCombo;
+        private JComboBox<String> rightColumnCombo;
+        private JButton removeButton;
+        
+        public JoinRow() {
+            setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
+            
+            leftTableCombo = new JComboBox<>();
+            leftColumnCombo = new JComboBox<>();
+            rightTableCombo = new JComboBox<>();
+            rightColumnCombo = new JComboBox<>();
+            removeButton = new JButton("X");
+            
+            // Populate table combos with all source tables
+            for (int i = 0; i < sourceTableCombo.getItemCount(); i++) {
+                String tableName = sourceTableCombo.getItemAt(i);
+                leftTableCombo.addItem(tableName);
+                rightTableCombo.addItem(tableName);
+            }
+            
+            // Add listeners to update column combos when tables are selected
+            leftTableCombo.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    updateLeftColumnCombo();
+                }
+            });
+            
+            rightTableCombo.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    updateRightColumnCombo();
+                }
+            });
+            
+            // Add listener for remove button
+            removeButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    joinRows.remove(JoinRow.this);
+                    joinsPanel.remove(JoinRow.this);
+                    joinsPanel.revalidate();
+                    joinsPanel.repaint();
+                }
+            });
+            
+            // Initialize column combos
+            updateLeftColumnCombo();
+            updateRightColumnCombo();
+            
+            // Add components to panel
+            add(new JLabel("Left Table:"));
+            add(leftTableCombo);
+            add(new JLabel("Left Column:"));
+            add(leftColumnCombo);
+            add(new JLabel("="));
+            add(new JLabel("Right Table:"));
+            add(rightTableCombo);
+            add(new JLabel("Right Column:"));
+            add(rightColumnCombo);
+            add(removeButton);
+            
+            setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.GRAY));
+        }
+        
+        private void updateLeftColumnCombo() {
+            leftColumnCombo.removeAllItems();
+            String selectedLeftTable = (String) leftTableCombo.getSelectedItem();
+            if (selectedLeftTable != null) {
+                for (Map.Entry<String, SourceColumn> entry : wizard.getSourceColumns().entrySet()) {
+                    if (entry.getKey().startsWith(selectedLeftTable + ".")) {
+                        String columnName = entry.getKey().substring(selectedLeftTable.length() + 1);
+                        leftColumnCombo.addItem(columnName);
+                    }
+                }
+            }
+        }
+        
+        private void updateRightColumnCombo() {
+            rightColumnCombo.removeAllItems();
+            String selectedRightTable = (String) rightTableCombo.getSelectedItem();
+            if (selectedRightTable != null) {
+                for (Map.Entry<String, SourceColumn> entry : wizard.getSourceColumns().entrySet()) {
+                    if (entry.getKey().startsWith(selectedRightTable + ".")) {
+                        String columnName = entry.getKey().substring(selectedRightTable.length() + 1);
+                        rightColumnCombo.addItem(columnName);
+                    }
+                }
+            }
+        }
+        
+        public JComboBox<String> getLeftTableCombo() {
+            return leftTableCombo;
+        }
+        
+        public JComboBox<String> getLeftColumnCombo() {
+            return leftColumnCombo;
+        }
+        
+        public JComboBox<String> getRightTableCombo() {
+            return rightTableCombo;
+        }
+        
+        public JComboBox<String> getRightColumnCombo() {
+            return rightColumnCombo;
+        }
     }
 }

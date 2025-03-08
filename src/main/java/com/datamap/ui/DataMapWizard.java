@@ -381,7 +381,7 @@ public class DataMapWizard extends JFrame {
         SourceColumn sourceColumn = sourceColumns.get(sourceTableName + "." + sourceColumnName);
 
         if (targetColumn != null && sourceColumn != null) {
-            Dict mapping = new Dict(targetColumn, dictType, sourceColumn );
+            Dict mapping = new Dict(targetColumn, dictType, sourceColumn);
             mappings.add(mapping);
         }
     }
@@ -395,19 +395,35 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    public void addExternalConnectionMapping(String targetTableName, String targetColumnName,
-                                             String externalTableName, String externalColumnName,
-                                             String externalIdColumnName, String sourceTableName, String sourceIdColumnName) {
+    // Updated to match the new method names in ExternalConnection
+    public int addExternalConnectionMapping(String targetTableName, String targetColumnName,
+                                            String finalSelectTableName, String finalSelectColumnName,
+                                            String finalIdColumnName, String sourceTableName, String sourceIdColumnName) {
         TargetColumn targetColumn = targetColumns.get(targetTableName + "." + targetColumnName);
-        SourceColumn externalSourceColumn = sourceColumns.get(externalTableName + "." + externalColumnName);
-        SourceColumn externalIdColumn = sourceColumns.get(externalTableName + "." + externalIdColumnName);
+        SourceColumn finalSelectColumn = sourceColumns.get(finalSelectTableName + "." + finalSelectColumnName);
+        SourceColumn finalIdColumn = sourceColumns.get(finalSelectTableName + "." + finalIdColumnName);
         SourceColumn sourceIdColumn = sourceColumns.get(sourceTableName + "." + sourceIdColumnName);
 
-        if (targetColumn != null && externalSourceColumn != null &&
-                externalIdColumn != null && sourceIdColumn != null) {
-            ExternalConnection mapping = new ExternalConnection(targetColumn, externalSourceColumn,
-                    externalIdColumn, sourceIdColumn );
+        if (targetColumn != null && finalSelectColumn != null && finalIdColumn != null && sourceIdColumn != null) {
+            ExternalConnection mapping = new ExternalConnection(targetColumn, finalSelectColumn, finalIdColumn, sourceIdColumn);
             mappings.add(mapping);
+            return mappings.size() - 1;
+        }
+        return -1;
+    }
+
+    // New method to add LEFT JOIN to external connection mapping
+    public void addLeftJoinToExternalConnection(int mappingIndex, String leftTableName, String leftColumnName,
+                                                String rightTableName, String rightColumnName) {
+        if (mappingIndex >= 0 && mappingIndex < mappings.size() && mappings.get(mappingIndex) instanceof ExternalConnection) {
+            ExternalConnection externalConnection = (ExternalConnection) mappings.get(mappingIndex);
+            SourceColumn leftColumn = sourceColumns.get(leftTableName + "." + leftColumnName);
+            SourceColumn rightColumn = sourceColumns.get(rightTableName + "." + rightColumnName);
+
+            if (leftColumn != null && rightColumn != null) {
+                LeftJoin join = new LeftJoin(leftColumn, rightColumn);
+                externalConnection.addJoin(join);
+            }
         }
     }
 
@@ -417,6 +433,7 @@ public class DataMapWizard extends JFrame {
         }
     }
 
+    // Updated to use the new method names (getFinalSelectColumn, getFinalIdColumn)
     private void removeMappingsWithSource(String tableName) {
         List<Mapping> mappingsToRemove = new ArrayList<>();
         for (Mapping mapping : mappings) {
@@ -433,9 +450,20 @@ public class DataMapWizard extends JFrame {
             } else if (mapping instanceof ExternalConnection) {
                 ExternalConnection ec = (ExternalConnection)mapping;
                 if (ec.getSourceIdColumn().getTable().getName().equals(tableName) ||
-                        ec.getExternalSourceColumn().getTable().getName().equals(tableName) ||
-                        ec.getExternalIdColumn().getTable().getName().equals(tableName)) {
+                        ec.getFinalSelectColumn().getTable().getName().equals(tableName) ||
+                        ec.getFinalIdColumn().getTable().getName().equals(tableName)) {
                     mappingsToRemove.add(mapping);
+                }
+
+                // Also check if any join columns reference the table being removed
+                for (LeftJoin join : ec.getJoins()) {
+                    if (join.getLeftColumn().getTable().getName().equals(tableName) ||
+                            join.getRightColumn().getTable().getName().equals(tableName)) {
+                        if (!mappingsToRemove.contains(mapping)) {
+                            mappingsToRemove.add(mapping);
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -452,6 +480,7 @@ public class DataMapWizard extends JFrame {
         mappings.removeAll(mappingsToRemove);
     }
 
+    // Updated to use the new method names (getFinalSelectColumn, getFinalIdColumn)
     private void removeMappingsWithSourceColumn(String tableName, String columnName) {
         List<Mapping> mappingsToRemove = new ArrayList<>();
         for (Mapping mapping : mappings) {
@@ -471,11 +500,24 @@ public class DataMapWizard extends JFrame {
                 ExternalConnection ec = (ExternalConnection)mapping;
                 if ((ec.getSourceIdColumn().getTable().getName().equals(tableName) &&
                         ec.getSourceIdColumn().getName().equals(columnName)) ||
-                        (ec.getExternalSourceColumn().getTable().getName().equals(tableName) &&
-                                ec.getExternalSourceColumn().getName().equals(columnName)) ||
-                        (ec.getExternalIdColumn().getTable().getName().equals(tableName) &&
-                                ec.getExternalIdColumn().getName().equals(columnName))) {
+                        (ec.getFinalSelectColumn().getTable().getName().equals(tableName) &&
+                                ec.getFinalSelectColumn().getName().equals(columnName)) ||
+                        (ec.getFinalIdColumn().getTable().getName().equals(tableName) &&
+                                ec.getFinalIdColumn().getName().equals(columnName))) {
                     mappingsToRemove.add(mapping);
+                }
+
+                // Also check for columns in LEFT JOINs
+                for (LeftJoin join : ec.getJoins()) {
+                    if ((join.getLeftColumn().getTable().getName().equals(tableName) &&
+                            join.getLeftColumn().getName().equals(columnName)) ||
+                            (join.getRightColumn().getTable().getName().equals(tableName) &&
+                                    join.getRightColumn().getName().equals(columnName))) {
+                        if (!mappingsToRemove.contains(mapping)) {
+                            mappingsToRemove.add(mapping);
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -602,10 +644,6 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    // Other methods remain the same
-    // ...
-    // (refreshAddColumnsPanel, refreshNoneMappingPanel, refreshDictMappingPanel,
-    // refreshConstantMappingPanel, refreshExternalConnectionPanel)
     private void refreshAddColumnsPanel() {
         try {
             java.lang.reflect.Field sourceColumnsModelField = AddColumnsPanel.class.getDeclaredField("sourceColumnsModel");
@@ -723,7 +761,6 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-
     private void refreshExternalConnectionPanel() {
         try {
             // Get access to the mappingsModel field
@@ -740,12 +777,33 @@ public class DataMapWizard extends JFrame {
                     ExternalConnection ecMapping = (ExternalConnection) mapping;
                     String targetKey = ecMapping.getTargetColumn().getTable().getName() + "." +
                             ecMapping.getTargetColumn().getName();
-                    String externalKey = ecMapping.getExternalSourceColumn().getTable().getName() + "." +
-                            ecMapping.getExternalSourceColumn().getName();
+                    String finalSelectKey = ecMapping.getFinalSelectColumn().getTable().getName() + "." +
+                            ecMapping.getFinalSelectColumn().getName();
                     String sourceIdKey = ecMapping.getSourceIdColumn().getTable().getName() + "." +
                             ecMapping.getSourceIdColumn().getName();
 
-                    mappingsModel.addElement(targetKey + " <- " + externalKey + " (Join on " + sourceIdKey + ")");
+                    StringBuilder displayBuilder = new StringBuilder();
+                    displayBuilder.append(targetKey).append(" <- ").append(finalSelectKey).append(" (Join on ").append(sourceIdKey).append(")");
+
+                    // Add LEFT JOIN info if any
+                    if (!ecMapping.getJoins().isEmpty()) {
+                        displayBuilder.append(" with LEFT JOINs: ");
+                        for (int i = 0; i < ecMapping.getJoins().size(); i++) {
+                            LeftJoin join = ecMapping.getJoins().get(i);
+                            if (i > 0) {
+                                displayBuilder.append(", ");
+                            }
+                            displayBuilder.append(join.getLeftColumn().getTable().getName())
+                                    .append(".")
+                                    .append(join.getLeftColumn().getName())
+                                    .append(" = ")
+                                    .append(join.getRightColumn().getTable().getName())
+                                    .append(".")
+                                    .append(join.getRightColumn().getName());
+                        }
+                    }
+
+                    mappingsModel.addElement(displayBuilder.toString());
                 }
             }
 
@@ -756,10 +814,10 @@ public class DataMapWizard extends JFrame {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Get a data source by name from the list of configured data sources
-     * 
+     *
      * @param name The name of the data source
      * @return The data source or null if not found
      */
@@ -771,7 +829,7 @@ public class DataMapWizard extends JFrame {
         }
         return null;
     }
-    
+
     /**
      * Updates the database connections for all connected components
      * This should be called whenever data sources are added/modified/removed
@@ -787,61 +845,61 @@ public class DataMapWizard extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         // Then, update columns if tables are selected
         if (addColumnsPanel != null) {
             addColumnsPanel.updateComponents();
         }
     }
-    
+
     /**
      * Get the table list from a data source
-     * 
+     *
      * @param dataSource The data source to query
      * @return A list of table names or an empty list if an error occurred
      */
     public List<String> getTablesFromDataSource(DataSource dataSource) {
         List<String> tables = new ArrayList<>();
-        
+
         try {
             Connection conn = DatabaseConnectionManager.getConnection(dataSource);
             tables = DatabaseConnectionManager.getTables(conn);
             conn.close();
         } catch (SQLException | ClassNotFoundException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Error retrieving tables: " + e.getMessage(), 
-                "Database Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Error retrieving tables: " + e.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
         }
-        
+
         return tables;
     }
-    
+
     /**
      * Get the column list from a specific table in a data source
-     * 
+     *
      * @param dataSource The data source to query
      * @param tableName The name of the table
      * @return A list of column names or an empty list if an error occurred
      */
     public List<String> getColumnsFromTable(DataSource dataSource, String tableName) {
         List<String> columns = new ArrayList<>();
-        
+
         try {
             Connection conn = DatabaseConnectionManager.getConnection(dataSource);
             columns = DatabaseConnectionManager.getColumns(conn, tableName);
             conn.close();
         } catch (SQLException | ClassNotFoundException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Error retrieving columns: " + e.getMessage(), 
-                "Database Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Error retrieving columns: " + e.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
         }
-        
+
         return columns;
     }
-    
+
     /**
      * Updates the data source for an existing source table
-     * 
+     *
      * @param tableName The name of the table to update
      * @param dataSource The data source to associate with the table
      */
@@ -851,10 +909,10 @@ public class DataMapWizard extends JFrame {
             sourceTable.setDataSourceName(dataSource.getName());
         }
     }
-    
+
     /**
      * Updates the data source for an existing target table
-     * 
+     *
      * @param tableName The name of the table to update
      * @param dataSource The data source to associate with the table
      */
