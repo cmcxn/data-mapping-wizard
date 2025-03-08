@@ -771,6 +771,22 @@ public class DataMapWizard extends JFrame {
             // Clear current mappings
             mappingsModel.clear();
 
+            // Get access to the joinRows field to clear existing join rows
+            java.lang.reflect.Field joinRowsField = ExternalConnectionPanel.class.getDeclaredField("joinRows");
+            joinRowsField.setAccessible(true);
+            List<?> joinRows = (List<?>)joinRowsField.get(externalConnectionPanel);
+
+            // Get access to the joinsPanel to clear its content
+            java.lang.reflect.Field joinsPanelField = ExternalConnectionPanel.class.getDeclaredField("joinsPanel");
+            joinsPanelField.setAccessible(true);
+            JPanel joinsPanel = (JPanel)joinsPanelField.get(externalConnectionPanel);
+
+            // Clear existing LEFT JOIN rows from UI
+            joinRows.clear();
+            joinsPanel.removeAll();
+            joinsPanel.revalidate();
+            joinsPanel.repaint();
+
             // Add mappings of type ExternalConnection
             for (Mapping mapping : mappings) {
                 if (mapping instanceof ExternalConnection) {
@@ -807,8 +823,15 @@ public class DataMapWizard extends JFrame {
                 }
             }
 
-            // Update comboboxes
+            // Update ExternalConnectionPanel UI
             externalConnectionPanel.updateComponents();
+
+            // This additional step is needed to ensure UI is fully updated
+            java.lang.reflect.Method clearJoinRowsMethod = ExternalConnectionPanel.class.getDeclaredMethod("clearJoinRows");
+            if (clearJoinRowsMethod != null) {
+                clearJoinRowsMethod.setAccessible(true);
+                clearJoinRowsMethod.invoke(externalConnectionPanel);
+            }
 
         } catch (Exception e) {
             e.printStackTrace();

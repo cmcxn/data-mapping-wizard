@@ -172,16 +172,40 @@ public class GenerateCodePanel extends JPanel {
                                 mappingConfig.getTargetColumn(),
                                 mappingConfig.getConstantValue()
                         );
-                    } else if ("ExternalConnection".equals(mappingConfig.getType())) {
-                        wizard.addExternalConnectionMapping(
+                    } // Replace the existing ExternalConnection part in the loadConfiguration method
+// (around line 170-179) with this updated code:
+
+                    else if ("ExternalConnection".equals(mappingConfig.getType())) {
+                        // Use the compatibility getters to support both old and new field names
+                        String finalSelectTable = mappingConfig.getFinalSelectTable();
+                        String finalSelectColumn = mappingConfig.getFinalSelectColumn();
+                        String finalIdColumn = mappingConfig.getFinalIdColumn();
+                        String sourceIdTable = mappingConfig.getSourceIdTable();
+                        String sourceIdColumn = mappingConfig.getSourceIdColumn();
+
+                        // Add the base external connection mapping
+                        int mappingIndex = wizard.addExternalConnectionMapping(
                                 mappingConfig.getTargetTable(),
                                 mappingConfig.getTargetColumn(),
-                                mappingConfig.getExternalTable(),
-                                mappingConfig.getExternalColumn(),
-                                mappingConfig.getExternalIdColumn(),
-                                mappingConfig.getSourceIdTable(),
-                                mappingConfig.getSourceIdColumn()
+                                finalSelectTable,
+                                finalSelectColumn,
+                                finalIdColumn,
+                                sourceIdTable,
+                                sourceIdColumn
                         );
+
+                        // Add any LEFT JOIN relationships
+                        if (mappingIndex >= 0 && mappingConfig.getLeftJoins() != null) {
+                            for (JsonConfig.LeftJoinConfig joinConfig : mappingConfig.getLeftJoins()) {
+                                wizard.addLeftJoinToExternalConnection(
+                                        mappingIndex,
+                                        joinConfig.getLeftTable(),
+                                        joinConfig.getLeftColumn(),
+                                        joinConfig.getRightTable(),
+                                        joinConfig.getRightColumn()
+                                );
+                            }
+                        }
                     }
                 }
 
@@ -201,5 +225,77 @@ public class GenerateCodePanel extends JPanel {
                 e.printStackTrace();
             }
         }
+    }
+
+    /**
+     * Apply loaded configuration mappings to the wizard
+     * This should be added to GenerateCodePanel.java or wherever configuration loading is handled
+     */
+    private void loadMappingsFromConfig(JsonConfig.Configuration config) {
+        // Clear existing mappings
+        wizard.getMappings().clear();
+
+        // Process each mapping configuration
+        for (JsonConfig.MappingConfig mappingConfig : config.getMappings()) {
+            if ("None".equals(mappingConfig.getType())) {
+                wizard.addNoneMapping(
+                        mappingConfig.getTargetTable(),
+                        mappingConfig.getTargetColumn(),
+                        mappingConfig.getSourceTable(),
+                        mappingConfig.getSourceColumn()
+                );
+            }
+            else if ("Dict".equals(mappingConfig.getType())) {
+                wizard.addDictMapping(
+                        mappingConfig.getTargetTable(),
+                        mappingConfig.getTargetColumn(),
+                        mappingConfig.getDictType(),
+                        mappingConfig.getSourceTable(),
+                        mappingConfig.getSourceColumn()
+                );
+            }
+            else if ("Constant".equals(mappingConfig.getType())) {
+                wizard.addConstantMapping(
+                        mappingConfig.getTargetTable(),
+                        mappingConfig.getTargetColumn(),
+                        mappingConfig.getConstantValue()
+                );
+            }
+            else if ("ExternalConnection".equals(mappingConfig.getType())) {
+                // Use the new field names with backward compatibility support
+                String finalSelectTable = mappingConfig.getFinalSelectTable();
+                String finalSelectColumn = mappingConfig.getFinalSelectColumn();
+                String finalIdColumn = mappingConfig.getFinalIdColumn();
+                String sourceIdTable = mappingConfig.getSourceIdTable();
+                String sourceIdColumn = mappingConfig.getSourceIdColumn();
+
+                // Add the base external connection mapping
+                int mappingIndex = wizard.addExternalConnectionMapping(
+                        mappingConfig.getTargetTable(),
+                        mappingConfig.getTargetColumn(),
+                        finalSelectTable,
+                        finalSelectColumn,
+                        finalIdColumn,
+                        sourceIdTable,
+                        sourceIdColumn
+                );
+
+                // Add any LEFT JOIN relationships
+                if (mappingIndex >= 0 && mappingConfig.getLeftJoins() != null) {
+                    for (JsonConfig.LeftJoinConfig joinConfig : mappingConfig.getLeftJoins()) {
+                        wizard.addLeftJoinToExternalConnection(
+                                mappingIndex,
+                                joinConfig.getLeftTable(),
+                                joinConfig.getLeftColumn(),
+                                joinConfig.getRightTable(),
+                                joinConfig.getRightColumn()
+                        );
+                    }
+                }
+            }
+        }
+
+        // Refresh all UI panels to show the newly loaded mappings
+        wizard.refreshAllPanelUIs();
     }
 }
