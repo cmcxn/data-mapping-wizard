@@ -232,6 +232,10 @@ public class AddColumnsPanel extends JPanel {
         String tableName = (String) sourceTableCombo.getSelectedItem();
         if (tableName == null) return;
 
+        // Get existing columns from the model
+        List<String> existingColumns = getExistingSourceColumns(tableName);
+
+        // Always try to fetch all columns from database
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         try {
@@ -245,16 +249,23 @@ public class AddColumnsPanel extends JPanel {
 
             // Get columns from database
             Connection conn = DatabaseConnectionManager.getConnection(dataSource);
-            List<String> columns = DatabaseConnectionManager.getColumns(conn, tableName);
+            List<String> columnsFromDb = DatabaseConnectionManager.getColumns(conn, tableName);
+
+            // Combine existing columns with database columns
+            for (String column : columnsFromDb) {
+                if (!existingColumns.contains(column)) {
+                    existingColumns.add(column);
+                }
+            }
 
             // Sort columns alphabetically
-            Collections.sort(columns);
+            Collections.sort(existingColumns);
 
             // Update the autocomplete items
-            sourceColumnCombo.setAutoCompleteItems(columns);
+            sourceColumnCombo.setAutoCompleteItems(existingColumns);
 
             // Store the full list of available columns for selection operations
-            availableSourceColumns = new ArrayList<>(columns);
+            availableSourceColumns = new ArrayList<>(existingColumns);
 
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
@@ -262,6 +273,12 @@ public class AddColumnsPanel extends JPanel {
                     "Error retrieving columns: " + e.getMessage(),
                     "Database Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
+
+            // If database access fails, at least use the existing columns
+            if (!existingColumns.isEmpty()) {
+                sourceColumnCombo.setAutoCompleteItems(existingColumns);
+                availableSourceColumns = new ArrayList<>(existingColumns);
+            }
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
@@ -270,6 +287,9 @@ public class AddColumnsPanel extends JPanel {
     private void updateTargetColumns() {
         String tableName = (String) targetTableCombo.getSelectedItem();
         if (tableName == null) return;
+
+        // Clear previously stored available columns first
+        availableTargetColumns.clear();
 
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
@@ -282,28 +302,98 @@ public class AddColumnsPanel extends JPanel {
             DataSource dataSource = findDataSourceForTable(targetTable.getDataSourceName());
             if (dataSource == null) return;
 
-            // Get columns from database
+            // Get columns from database - ensure connection is established
             Connection conn = DatabaseConnectionManager.getConnection(dataSource);
-            List<String> columns = DatabaseConnectionManager.getColumns(conn, tableName);
+            if (conn == null) {
+                throw new SQLException("Failed to establish database connection");
+            }
+
+            // Force direct database query to get all columns
+            List<String> columnsFromDb = DatabaseConnectionManager.getColumns(conn, tableName);
+
+            // Also get any columns from loaded configuration
+            List<String> existingColumns = getExistingTargetColumns(tableName);
+
+            // Merge columns from both sources
+            for (String column : columnsFromDb) {
+                if (!availableTargetColumns.contains(column)) {
+                    availableTargetColumns.add(column);
+                }
+            }
+
+            for (String column : existingColumns) {
+                if (!availableTargetColumns.contains(column)) {
+                    availableTargetColumns.add(column);
+                }
+            }
 
             // Sort columns alphabetically
-            Collections.sort(columns);
+            Collections.sort(availableTargetColumns);
 
-            // Update the autocomplete items
-            targetColumnCombo.setAutoCompleteItems(columns);
+            // Update the autocomplete items with all available columns
+            targetColumnCombo.setAutoCompleteItems(availableTargetColumns);
 
-            // Store the full list of available columns for selection operations
-            availableTargetColumns = new ArrayList<>(columns);
-
-            if (conn != null) conn.close();
+            // Close connection when done
+            if (conn != null && !conn.isClosed()) {
+                conn.close();
+            }
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this,
-                    "Error retrieving columns: " + e.getMessage(),
+                    "Error retrieving target columns: " + e.getMessage(),
                     "Database Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
+
+            // If database access fails, fall back to existing columns from config
+            List<String> existingColumns = getExistingTargetColumns(tableName);
+            if (!existingColumns.isEmpty()) {
+                availableTargetColumns = new ArrayList<>(existingColumns);
+                targetColumnCombo.setAutoCompleteItems(existingColumns);
+            }
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
+
+        // Debug output to check what columns were loaded
+        System.out.println("Target columns loaded for table " + tableName + ": " + availableTargetColumns.size());
+    }
+    /**
+     * Get existing source columns for a table from the wizard's data model
+     */
+    private List<String> getExistingSourceColumns(String tableName) {
+        List<String> columns = new ArrayList<>();
+        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
+
+        for (Map.Entry<String, SourceColumn> entry : sourceColumns.entrySet()) {
+            if (entry.getKey().startsWith(tableName + ".")) {
+                // Extract just the column name part after the "tableName."
+                String columnName = entry.getKey().substring(tableName.length() + 1);
+                columns.add(columnName);
+            }
+        }
+
+        // Sort columns alphabetically
+        Collections.sort(columns);
+        return columns;
+    }
+
+    /**
+     * Get existing target columns for a table from the wizard's data model
+     */
+    private List<String> getExistingTargetColumns(String tableName) {
+        List<String> columns = new ArrayList<>();
+        Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
+
+        for (Map.Entry<String, TargetColumn> entry : targetColumns.entrySet()) {
+            if (entry.getKey().startsWith(tableName + ".")) {
+                // Extract just the column name part after the "tableName."
+                String columnName = entry.getKey().substring(tableName.length() + 1);
+                columns.add(columnName);
+            }
+        }
+
+        // Sort columns alphabetically
+        Collections.sort(columns);
+        return columns;
     }
 
     private DataSource findDataSourceForTable(String dataSourceName) {
@@ -678,7 +768,6 @@ public class AddColumnsPanel extends JPanel {
                         addedCount + " columns added.",
                 "Selection Inverted", JOptionPane.INFORMATION_MESSAGE);
     }
-
     public void updateComponents() {
         // Clear and update the source table combo
         sourceTableCombo.removeAllItems();
@@ -711,6 +800,27 @@ public class AddColumnsPanel extends JPanel {
 
         if (targetTableCombo.getItemCount() > 0) {
             updateTargetColumns();
+        }
+
+        // Update the displayed columns in lists
+        updateColumnsLists();
+    }
+
+    private void updateColumnsLists() {
+        // Clear existing items from models
+        sourceColumnsModel.clear();
+        targetColumnsModel.clear();
+
+        // Add source columns to list
+        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
+        for (Map.Entry<String, SourceColumn> entry : sourceColumns.entrySet()) {
+            sourceColumnsModel.addElement(entry.getKey());
+        }
+
+        // Add target columns to list
+        Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
+        for (Map.Entry<String, TargetColumn> entry : targetColumns.entrySet()) {
+            targetColumnsModel.addElement(entry.getKey());
         }
     }
 }
