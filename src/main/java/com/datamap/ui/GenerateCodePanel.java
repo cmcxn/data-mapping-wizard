@@ -216,7 +216,9 @@ public class GenerateCodePanel extends JPanel {
         // First create all source tables
         for (TableConfig tableConfig : config.getSourceTables()) {
             // Create source table
-            wizard.addSourceTable(tableConfig.getName(), tableConfig.getColumns().toArray(new String[0]));
+            DataSource dataSource = new DataSource();
+            dataSource.setName(tableConfig.getDataSourceName());
+            wizard.addSourceTable(tableConfig.getName(),dataSource, tableConfig.getColumns().toArray(new String[0]));
 
             // Add columns
             for (String column : tableConfig.getColumns()) {
@@ -227,7 +229,9 @@ public class GenerateCodePanel extends JPanel {
         // Then create target tables
         for (TableConfig tableConfig : config.getTargetTables()) {
             // Create target table
-            wizard.addTargetTable(tableConfig.getSourceTableName(), tableConfig.getName(),
+            DataSource dataSource = new DataSource();
+            dataSource.setName(tableConfig.getDataSourceName());
+            wizard.addTargetTable(tableConfig.getSourceTableName(), tableConfig.getName(),dataSource,
                     tableConfig.getColumns().toArray(new String[0]));
 
             // Add columns

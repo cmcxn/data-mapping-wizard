@@ -49,6 +49,15 @@ public class JsonConfig {
         private String name;
         private List<String> columns = new ArrayList<>();
         private String sourceTableName; // Only for target tables
+        private String dataSourceName;
+
+        public String getDataSourceName() {
+            return dataSourceName;
+        }
+
+        public void setDataSourceName(String dataSourceName) {
+            this.dataSourceName = dataSourceName;
+        }
 
         public String getName() {
             return name;
@@ -297,6 +306,7 @@ public class JsonConfig {
             TableConfig tableConfig = new TableConfig();
             tableConfig.setName(entry.getKey());
             tableConfig.setColumns(entry.getValue().getTable().getColumns());
+            tableConfig.setDataSourceName(entry.getValue().getTable().getDataSourceName());
             config.getSourceTables().add(tableConfig);
         }
 
@@ -305,6 +315,7 @@ public class JsonConfig {
             TableConfig tableConfig = new TableConfig();
             tableConfig.setName(entry.getKey());
             tableConfig.setColumns(entry.getValue().getTable().getColumns());
+            tableConfig.setDataSourceName(entry.getValue().getTable().getDataSourceName());
             tableConfig.setSourceTableName(entry.getValue().getSourceTable().getTable().getName());
             config.getTargetTables().add(tableConfig);
         }

@@ -237,11 +237,11 @@ public class DataMapWizard extends JFrame {
     }
 
     // Data model management methods with data source support
-    public void addSourceTable(String name, String... columns) {
-        Table table = new Table(name, columns);
-        SourceTable sourceTable = new SourceTable(table);
-        sourceTables.put(name, sourceTable);
-    }
+//    public void addSourceTable(String name, String... columns) {
+//        Table table = new Table(name, columns);
+//        SourceTable sourceTable = new SourceTable(table);
+//        sourceTables.put(name, sourceTable);
+//    }
 
     // New method with data source support
     public void addSourceTable(String name, DataSource dataSource, String... columns) {
@@ -280,14 +280,14 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-    public void addTargetTable(String sourceName, String targetName, String... columns) {
-        SourceTable sourceTable = sourceTables.get(sourceName);
-        if (sourceTable != null) {
-            Table table = new Table(targetName, columns);
-            TargetTable targetTable = new TargetTable(sourceTable, table);
-            targetTables.put(targetName, targetTable);
-        }
-    }
+//    public void addTargetTable(String sourceName, String targetName, String... columns) {
+//        SourceTable sourceTable = sourceTables.get(sourceName);
+//        if (sourceTable != null) {
+//            Table table = new Table(targetName, columns);
+//            TargetTable targetTable = new TargetTable(sourceTable, table);
+//            targetTables.put(targetName, targetTable);
+//        }
+//    }
 
     // New method with data source support
     public void addTargetTable(String sourceName, String targetName, DataSource dataSource, String... columns) {

@@ -7,6 +7,15 @@ import java.util.List;
 public class Table {
     private String name;
     private List<String> columns = new ArrayList<>();
+    private String dataSourceName; // Name of associated data source
+
+    public String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    public void setDataSourceName(String dataSourceName) {
+        this.dataSourceName = dataSourceName;
+    }
 
     public Table(String name, String... columns) {
         this.name = name;

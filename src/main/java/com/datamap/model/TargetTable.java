@@ -8,15 +8,16 @@ public class TargetTable {
     private Table table;
     private String dataSourceName; // Name of associated data source
 
-    public TargetTable(SourceTable sourceTable, Table table) {
-        this.sourceTable = sourceTable;
-        this.table = table;
-    }
+//    public TargetTable(SourceTable sourceTable, Table table) {
+//        this.sourceTable = sourceTable;
+//        this.table = table;
+//    }
 
     public TargetTable(SourceTable sourceTable, Table table, String dataSourceName) {
         this.sourceTable = sourceTable;
         this.table = table;
         this.dataSourceName = dataSourceName;
+        this.table.setDataSourceName(dataSourceName);
     }
 
     public SourceTable getSourceTable() {
