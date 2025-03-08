@@ -27,12 +27,18 @@ public class AddColumnsPanel extends JPanel {
     private JList<String> sourceColumnsList;
     private JList<String> targetColumnsList;
 
+    // Current columns from database for selection operations
+    private List<String> availableSourceColumns;
+    private List<String> availableTargetColumns;
+
     public AddColumnsPanel(DataMapWizard wizard) {
         this.wizard = wizard;
         setLayout(new BorderLayout());
 
         sourceColumnsModel = new DefaultListModel<>();
         targetColumnsModel = new DefaultListModel<>();
+        availableSourceColumns = new ArrayList<>();
+        availableTargetColumns = new ArrayList<>();
 
         initComponents();
     }
@@ -78,11 +84,49 @@ public class AddColumnsPanel extends JPanel {
         });
 
         sourceColumnsList = new JList<>(sourceColumnsModel);
+        // 允许多选
+        sourceColumnsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         JScrollPane sourceScrollPane = new JScrollPane(sourceColumnsList);
 
-        JPanel sourceActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        sourceActionsPanel.add(addSourceColumnButton);
-        sourceActionsPanel.add(deleteSourceColumnButton);
+        JPanel sourceActionsPanel = new JPanel(new GridLayout(2, 1, 5, 5));
+
+        JPanel sourceMainActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        sourceMainActionsPanel.add(addSourceColumnButton);
+        sourceMainActionsPanel.add(deleteSourceColumnButton);
+
+        // Add source column selection buttons
+        JPanel sourceSelectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
+        JButton selectAllSourceButton = new JButton("Select All");
+        selectAllSourceButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                selectAllSourceColumns();
+            }
+        });
+
+        JButton deselectAllSourceButton = new JButton("Deselect All");
+        deselectAllSourceButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deselectAllSourceColumns();
+            }
+        });
+
+        JButton invertSourceSelectionButton = new JButton("Invert Selection");
+        invertSourceSelectionButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                invertSourceColumnSelection();
+            }
+        });
+
+        sourceSelectionPanel.add(selectAllSourceButton);
+        sourceSelectionPanel.add(deselectAllSourceButton);
+        sourceSelectionPanel.add(invertSourceSelectionButton);
+
+        sourceActionsPanel.add(sourceMainActionsPanel);
+        sourceActionsPanel.add(sourceSelectionPanel);
 
         sourcePanel.add(sourceInputPanel, BorderLayout.NORTH);
         sourcePanel.add(sourceScrollPane, BorderLayout.CENTER);
@@ -126,11 +170,49 @@ public class AddColumnsPanel extends JPanel {
         });
 
         targetColumnsList = new JList<>(targetColumnsModel);
+        // 允许多选
+        targetColumnsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         JScrollPane targetScrollPane = new JScrollPane(targetColumnsList);
 
-        JPanel targetActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        targetActionsPanel.add(addTargetColumnButton);
-        targetActionsPanel.add(deleteTargetColumnButton);
+        JPanel targetActionsPanel = new JPanel(new GridLayout(2, 1, 5, 5));
+
+        JPanel targetMainActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        targetMainActionsPanel.add(addTargetColumnButton);
+        targetMainActionsPanel.add(deleteTargetColumnButton);
+
+        // Add target column selection buttons
+        JPanel targetSelectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
+        JButton selectAllTargetButton = new JButton("Select All");
+        selectAllTargetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                selectAllTargetColumns();
+            }
+        });
+
+        JButton deselectAllTargetButton = new JButton("Deselect All");
+        deselectAllTargetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deselectAllTargetColumns();
+            }
+        });
+
+        JButton invertTargetSelectionButton = new JButton("Invert Selection");
+        invertTargetSelectionButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                invertTargetColumnSelection();
+            }
+        });
+
+        targetSelectionPanel.add(selectAllTargetButton);
+        targetSelectionPanel.add(deselectAllTargetButton);
+        targetSelectionPanel.add(invertTargetSelectionButton);
+
+        targetActionsPanel.add(targetMainActionsPanel);
+        targetActionsPanel.add(targetSelectionPanel);
 
         targetPanel.add(targetInputPanel, BorderLayout.NORTH);
         targetPanel.add(targetScrollPane, BorderLayout.CENTER);
@@ -150,15 +232,6 @@ public class AddColumnsPanel extends JPanel {
         String tableName = (String) sourceTableCombo.getSelectedItem();
         if (tableName == null) return;
 
-        // First check if we already have columns defined for this table in the model
-        List<String> existingColumns = getExistingSourceColumns(tableName);
-        if (!existingColumns.isEmpty()) {
-            // Use existing columns from the model instead of querying the database
-            sourceColumnCombo.setAutoCompleteItems(existingColumns);
-            return;
-        }
-
-        // If no existing columns, try to fetch from database
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         try {
@@ -180,6 +253,9 @@ public class AddColumnsPanel extends JPanel {
             // Update the autocomplete items
             sourceColumnCombo.setAutoCompleteItems(columns);
 
+            // Store the full list of available columns for selection operations
+            availableSourceColumns = new ArrayList<>(columns);
+
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this,
@@ -195,15 +271,6 @@ public class AddColumnsPanel extends JPanel {
         String tableName = (String) targetTableCombo.getSelectedItem();
         if (tableName == null) return;
 
-        // First check if we already have columns defined for this table in the model
-        List<String> existingColumns = getExistingTargetColumns(tableName);
-        if (!existingColumns.isEmpty()) {
-            // Use existing columns from the model instead of querying the database
-            targetColumnCombo.setAutoCompleteItems(existingColumns);
-            return;
-        }
-
-        // If no existing columns, try to fetch from database
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         try {
@@ -225,6 +292,9 @@ public class AddColumnsPanel extends JPanel {
             // Update the autocomplete items
             targetColumnCombo.setAutoCompleteItems(columns);
 
+            // Store the full list of available columns for selection operations
+            availableTargetColumns = new ArrayList<>(columns);
+
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this,
@@ -234,46 +304,6 @@ public class AddColumnsPanel extends JPanel {
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
-    }
-
-    /**
-     * Get existing source columns for a table from the wizard's data model
-     */
-    private List<String> getExistingSourceColumns(String tableName) {
-        List<String> columns = new ArrayList<>();
-        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
-
-        for (Map.Entry<String, SourceColumn> entry : sourceColumns.entrySet()) {
-            if (entry.getKey().startsWith(tableName + ".")) {
-                // Extract just the column name part after the "tableName."
-                String columnName = entry.getKey().substring(tableName.length() + 1);
-                columns.add(columnName);
-            }
-        }
-
-        // Sort columns alphabetically
-        Collections.sort(columns);
-        return columns;
-    }
-
-    /**
-     * Get existing target columns for a table from the wizard's data model
-     */
-    private List<String> getExistingTargetColumns(String tableName) {
-        List<String> columns = new ArrayList<>();
-        Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
-
-        for (Map.Entry<String, TargetColumn> entry : targetColumns.entrySet()) {
-            if (entry.getKey().startsWith(tableName + ".")) {
-                // Extract just the column name part after the "tableName."
-                String columnName = entry.getKey().substring(tableName.length() + 1);
-                columns.add(columnName);
-            }
-        }
-
-        // Sort columns alphabetically
-        Collections.sort(columns);
-        return columns;
     }
 
     private DataSource findDataSourceForTable(String dataSourceName) {
@@ -321,16 +351,34 @@ public class AddColumnsPanel extends JPanel {
     }
 
     private void deleteSourceColumn() {
-        int selectedIndex = sourceColumnsList.getSelectedIndex();
-        if (selectedIndex >= 0) {
-            String selectedColumn = sourceColumnsModel.getElementAt(selectedIndex);
-            sourceColumnsModel.remove(selectedIndex);
+        // 获取所有选中的索引
+        int[] selectedIndices = sourceColumnsList.getSelectedIndices();
+        if (selectedIndices.length == 0) {
+            return;
+        }
 
-            // Delete from the data model
+        // 创建要删除的列的列表
+        List<String> columnsToRemove = new ArrayList<>();
+        for (int index : selectedIndices) {
+            columnsToRemove.add(sourceColumnsModel.getElementAt(index));
+        }
+
+        // 从数据模型中删除所选列
+        for (String selectedColumn : columnsToRemove) {
+            sourceColumnsModel.removeElement(selectedColumn);
+
+            // 从数据模型中删除
             String[] parts = selectedColumn.split("\\.");
             if (parts.length == 2) {
                 wizard.removeSourceColumn(parts[0], parts[1]);
             }
+        }
+
+        // 如果删除了多个项目，显示通知
+        if (columnsToRemove.size() > 1) {
+            JOptionPane.showMessageDialog(this,
+                    columnsToRemove.size() + " source columns removed.",
+                    "Columns Removed", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -360,17 +408,275 @@ public class AddColumnsPanel extends JPanel {
     }
 
     private void deleteTargetColumn() {
-        int selectedIndex = targetColumnsList.getSelectedIndex();
-        if (selectedIndex >= 0) {
-            String selectedColumn = targetColumnsModel.getElementAt(selectedIndex);
-            targetColumnsModel.remove(selectedIndex);
+        // 获取所有选中的索引
+        int[] selectedIndices = targetColumnsList.getSelectedIndices();
+        if (selectedIndices.length == 0) {
+            return;
+        }
 
-            // Delete from the data model
+        // 创建要删除的列的列表
+        List<String> columnsToRemove = new ArrayList<>();
+        for (int index : selectedIndices) {
+            columnsToRemove.add(targetColumnsModel.getElementAt(index));
+        }
+
+        // 从数据模型中删除所选列
+        for (String selectedColumn : columnsToRemove) {
+            targetColumnsModel.removeElement(selectedColumn);
+
+            // 从数据模型中删除
             String[] parts = selectedColumn.split("\\.");
             if (parts.length == 2) {
                 wizard.removeTargetColumn(parts[0], parts[1]);
             }
         }
+
+        // 如果删除了多个项目，显示通知
+        if (columnsToRemove.size() > 1) {
+            JOptionPane.showMessageDialog(this,
+                    columnsToRemove.size() + " target columns removed.",
+                    "Columns Removed", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    // New methods for column selection operations
+
+    private void selectAllSourceColumns() {
+        String tableName = (String) sourceTableCombo.getSelectedItem();
+        if (tableName == null || availableSourceColumns.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No source columns available to select.",
+                    "Selection Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int addedCount = 0;
+        for (String columnName : availableSourceColumns) {
+            String columnKey = tableName + "." + columnName;
+
+            // Check if column is already added
+            boolean exists = false;
+            for (int i = 0; i < sourceColumnsModel.size(); i++) {
+                if (sourceColumnsModel.getElementAt(i).equals(columnKey)) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (!exists) {
+                wizard.addSourceColumn(tableName, columnName);
+                sourceColumnsModel.addElement(columnKey);
+                addedCount++;
+            }
+        }
+
+        if (addedCount > 0) {
+            JOptionPane.showMessageDialog(this,
+                    addedCount + " source columns added successfully.",
+                    "Columns Added", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "All columns are already added.",
+                    "No Change", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void deselectAllSourceColumns() {
+        if (sourceColumnsModel.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No source columns to remove.",
+                    "Selection Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String tableName = (String) sourceTableCombo.getSelectedItem();
+        if (tableName == null) return;
+
+        // Create a list of columns to remove
+        List<String> columnsToRemove = new ArrayList<>();
+        for (int i = 0; i < sourceColumnsModel.size(); i++) {
+            String columnKey = sourceColumnsModel.getElementAt(i);
+            if (columnKey.startsWith(tableName + ".")) {
+                columnsToRemove.add(columnKey);
+            }
+        }
+
+        // Remove columns from model and wizard
+        for (String columnKey : columnsToRemove) {
+            sourceColumnsModel.removeElement(columnKey);
+            String[] parts = columnKey.split("\\.");
+            if (parts.length == 2) {
+                wizard.removeSourceColumn(parts[0], parts[1]);
+            }
+        }
+
+        if (!columnsToRemove.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    columnsToRemove.size() + " source columns removed.",
+                    "Columns Removed", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void invertSourceColumnSelection() {
+        String tableName = (String) sourceTableCombo.getSelectedItem();
+        if (tableName == null || availableSourceColumns.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No source columns available to select.",
+                    "Selection Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Create a set of currently selected columns
+        List<String> currentlySelected = new ArrayList<>();
+        for (int i = 0; i < sourceColumnsModel.size(); i++) {
+            String columnKey = sourceColumnsModel.getElementAt(i);
+            if (columnKey.startsWith(tableName + ".")) {
+                String[] parts = columnKey.split("\\.");
+                if (parts.length == 2) {
+                    currentlySelected.add(parts[1]);
+                }
+            }
+        }
+
+        // Remove currently selected columns
+        for (String columnName : currentlySelected) {
+            wizard.removeSourceColumn(tableName, columnName);
+            sourceColumnsModel.removeElement(tableName + "." + columnName);
+        }
+
+        // Add currently unselected columns
+        int addedCount = 0;
+        for (String columnName : availableSourceColumns) {
+            if (!currentlySelected.contains(columnName)) {
+                wizard.addSourceColumn(tableName, columnName);
+                sourceColumnsModel.addElement(tableName + "." + columnName);
+                addedCount++;
+            }
+        }
+
+        JOptionPane.showMessageDialog(this,
+                currentlySelected.size() + " columns removed and " +
+                        addedCount + " columns added.",
+                "Selection Inverted", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void selectAllTargetColumns() {
+        String tableName = (String) targetTableCombo.getSelectedItem();
+        if (tableName == null || availableTargetColumns.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No target columns available to select.",
+                    "Selection Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int addedCount = 0;
+        for (String columnName : availableTargetColumns) {
+            String columnKey = tableName + "." + columnName;
+
+            // Check if column is already added
+            boolean exists = false;
+            for (int i = 0; i < targetColumnsModel.size(); i++) {
+                if (targetColumnsModel.getElementAt(i).equals(columnKey)) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (!exists) {
+                wizard.addTargetColumn(tableName, columnName);
+                targetColumnsModel.addElement(columnKey);
+                addedCount++;
+            }
+        }
+
+        if (addedCount > 0) {
+            JOptionPane.showMessageDialog(this,
+                    addedCount + " target columns added successfully.",
+                    "Columns Added", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "All columns are already added.",
+                    "No Change", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void deselectAllTargetColumns() {
+        if (targetColumnsModel.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No target columns to remove.",
+                    "Selection Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String tableName = (String) targetTableCombo.getSelectedItem();
+        if (tableName == null) return;
+
+        // Create a list of columns to remove
+        List<String> columnsToRemove = new ArrayList<>();
+        for (int i = 0; i < targetColumnsModel.size(); i++) {
+            String columnKey = targetColumnsModel.getElementAt(i);
+            if (columnKey.startsWith(tableName + ".")) {
+                columnsToRemove.add(columnKey);
+            }
+        }
+
+        // Remove columns from model and wizard
+        for (String columnKey : columnsToRemove) {
+            targetColumnsModel.removeElement(columnKey);
+            String[] parts = columnKey.split("\\.");
+            if (parts.length == 2) {
+                wizard.removeTargetColumn(parts[0], parts[1]);
+            }
+        }
+
+        if (!columnsToRemove.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    columnsToRemove.size() + " target columns removed.",
+                    "Columns Removed", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void invertTargetColumnSelection() {
+        String tableName = (String) targetTableCombo.getSelectedItem();
+        if (tableName == null || availableTargetColumns.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No target columns available to select.",
+                    "Selection Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Create a list of currently selected columns
+        List<String> currentlySelected = new ArrayList<>();
+        for (int i = 0; i < targetColumnsModel.size(); i++) {
+            String columnKey = targetColumnsModel.getElementAt(i);
+            if (columnKey.startsWith(tableName + ".")) {
+                String[] parts = columnKey.split("\\.");
+                if (parts.length == 2) {
+                    currentlySelected.add(parts[1]);
+                }
+            }
+        }
+
+        // Remove currently selected columns
+        for (String columnName : currentlySelected) {
+            wizard.removeTargetColumn(tableName, columnName);
+            targetColumnsModel.removeElement(tableName + "." + columnName);
+        }
+
+        // Add currently unselected columns
+        int addedCount = 0;
+        for (String columnName : availableTargetColumns) {
+            if (!currentlySelected.contains(columnName)) {
+                wizard.addTargetColumn(tableName, columnName);
+                targetColumnsModel.addElement(tableName + "." + columnName);
+                addedCount++;
+            }
+        }
+
+        JOptionPane.showMessageDialog(this,
+                currentlySelected.size() + " columns removed and " +
+                        addedCount + " columns added.",
+                "Selection Inverted", JOptionPane.INFORMATION_MESSAGE);
     }
 
     public void updateComponents() {
