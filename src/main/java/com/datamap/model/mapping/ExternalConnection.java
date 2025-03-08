@@ -8,15 +8,17 @@ import java.util.List;
 
 public class ExternalConnection extends Mapping {
     private SourceColumn finalSelectColumn;
-    private SourceColumn finalIdColumn;
+    private SourceColumn whereIdColumn;
+    private SourceColumn whereSelectTable;
     private SourceColumn sourceIdColumn;
     private List<LeftJoin> joins;
     
     public ExternalConnection(TargetColumn targetColumn, SourceColumn finalSelectColumn, 
-                             SourceColumn finalIdColumn, SourceColumn sourceIdColumn) {
+                             SourceColumn whereIdColumn, SourceColumn whereSelectTable, SourceColumn sourceIdColumn) {
         super(targetColumn);
         this.finalSelectColumn = finalSelectColumn;
-        this.finalIdColumn = finalIdColumn;
+        this.whereIdColumn = whereIdColumn;
+        this.whereSelectTable = whereSelectTable;
         this.sourceIdColumn = sourceIdColumn;
         this.joins = new ArrayList<>();
     }
@@ -25,8 +27,12 @@ public class ExternalConnection extends Mapping {
         return finalSelectColumn;
     }
     
-    public SourceColumn getFinalIdColumn() {
-        return finalIdColumn;
+    public SourceColumn getWhereIdColumn() {
+        return whereIdColumn;
+    }
+    
+    public SourceColumn getWhereSelectTable() {
+        return whereSelectTable;
     }
     
     public SourceColumn getSourceIdColumn() {
@@ -53,14 +59,16 @@ public class ExternalConnection extends Mapping {
         // Format properly with underscore notation
         String targetVarName = targetColumn.getTable().getName() + "_" + targetColumn.getName();
         String finalSelectVarName = finalSelectColumn.getTable().getName() + "_" + finalSelectColumn.getName();
-        String finalIdVarName = finalIdColumn.getTable().getName() + "_" + finalIdColumn.getName();
+        String whereIdVarName = whereIdColumn.getTable().getName() + "_" + whereIdColumn.getName();
+        String whereSelectTableVarName = whereSelectTable.getTable().getName() + "_" + whereSelectTable.getName();
         String sourceIdVarName = sourceIdColumn.getTable().getName() + "_" + sourceIdColumn.getName();
         
         StringBuilder codeBuilder = new StringBuilder();
         codeBuilder.append("set.add(new ExternalConnection(")
                  .append(targetVarName).append(",")
                  .append(finalSelectVarName).append(",")
-                 .append(finalIdVarName).append(",")
+                 .append(whereIdVarName).append(",")
+
                  .append(sourceIdVarName).append(")");
         
         // Add joins if any

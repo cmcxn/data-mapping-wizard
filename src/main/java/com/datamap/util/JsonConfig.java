@@ -125,9 +125,10 @@ public class JsonConfig {
         private String dictType; // For Dict
         private String constantValue; // For Constant
         // For ExternalConnection
-        private String finalSelectTable;  // Renamed from externalTable
-        private String finalSelectColumn; // Renamed from externalColumn
-        private String finalIdColumn;     // Renamed from externalIdColumn
+        private String finalSelectTable;
+        private String finalSelectColumn;
+        private String whereSelectTable; // Added new field for whereSelectTable
+        private String whereIdColumn; // Renamed from finalIdColumn
         private String sourceIdTable;
         private String sourceIdColumn;
         // For LEFT JOINs in ExternalConnection
@@ -137,6 +138,7 @@ public class JsonConfig {
         private String externalTable;
         private String externalColumn;
         private String externalIdColumn;
+        private String finalIdColumn; // For backward compatibility
 
         public String getType() {
             return type;
@@ -210,12 +212,22 @@ public class JsonConfig {
             this.finalSelectColumn = finalSelectColumn;
         }
 
-        public String getFinalIdColumn() {
-            return finalIdColumn != null ? finalIdColumn : externalIdColumn; // Handle backward compatibility
+        public String getWhereSelectTable() {
+            return whereSelectTable;
         }
 
-        public void setFinalIdColumn(String finalIdColumn) {
-            this.finalIdColumn = finalIdColumn;
+        public void setWhereSelectTable(String whereSelectTable) {
+            this.whereSelectTable = whereSelectTable;
+        }
+
+        public String getWhereIdColumn() {
+            // For backward compatibility: if whereIdColumn is null and finalIdColumn exists, use finalIdColumn
+            return whereIdColumn != null ? whereIdColumn : 
+                   (finalIdColumn != null ? finalIdColumn : externalIdColumn);
+        }
+
+        public void setWhereIdColumn(String whereIdColumn) {
+            this.whereIdColumn = whereIdColumn;
         }
 
         public String getSourceIdTable() {
@@ -265,6 +277,14 @@ public class JsonConfig {
 
         public void setExternalIdColumn(String externalIdColumn) {
             this.externalIdColumn = externalIdColumn;
+        }
+
+        public String getFinalIdColumn() {
+            return finalIdColumn;
+        }
+
+        public void setFinalIdColumn(String finalIdColumn) {
+            this.finalIdColumn = finalIdColumn;
         }
     }
 
@@ -321,7 +341,8 @@ public class JsonConfig {
                 mappingConfig.setTargetColumn(ecMapping.getTargetColumn().getName());
                 mappingConfig.setFinalSelectTable(ecMapping.getFinalSelectColumn().getTable().getName());
                 mappingConfig.setFinalSelectColumn(ecMapping.getFinalSelectColumn().getName());
-                mappingConfig.setFinalIdColumn(ecMapping.getFinalIdColumn().getName());
+                mappingConfig.setWhereSelectTable(ecMapping.getWhereSelectTable().getTable().getName());
+                mappingConfig.setWhereIdColumn(ecMapping.getWhereIdColumn().getName());
                 mappingConfig.setSourceIdTable(ecMapping.getSourceIdColumn().getTable().getName());
                 mappingConfig.setSourceIdColumn(ecMapping.getSourceIdColumn().getName());
 

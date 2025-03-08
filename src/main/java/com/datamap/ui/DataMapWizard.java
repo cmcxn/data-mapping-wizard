@@ -398,14 +398,16 @@ public class DataMapWizard extends JFrame {
     // Updated to match the new method names in ExternalConnection
     public int addExternalConnectionMapping(String targetTableName, String targetColumnName,
                                             String finalSelectTableName, String finalSelectColumnName,
-                                            String finalIdColumnName, String sourceTableName, String sourceIdColumnName) {
+                                            String whereSelectTableName, String whereIdColumnName,
+                                            String sourceTableName, String sourceIdColumnName) {
         TargetColumn targetColumn = targetColumns.get(targetTableName + "." + targetColumnName);
         SourceColumn finalSelectColumn = sourceColumns.get(finalSelectTableName + "." + finalSelectColumnName);
-        SourceColumn finalIdColumn = sourceColumns.get(finalSelectTableName + "." + finalIdColumnName);
+        SourceColumn whereIdColumn = sourceColumns.get(whereSelectTableName + "." + whereIdColumnName);
+        SourceColumn whereSelectTable = sourceColumns.get(whereSelectTableName + "." + whereIdColumnName); // Using the same column but it's the table we need
         SourceColumn sourceIdColumn = sourceColumns.get(sourceTableName + "." + sourceIdColumnName);
 
-        if (targetColumn != null && finalSelectColumn != null && finalIdColumn != null && sourceIdColumn != null) {
-            ExternalConnection mapping = new ExternalConnection(targetColumn, finalSelectColumn, finalIdColumn, sourceIdColumn);
+        if (targetColumn != null && finalSelectColumn != null && whereIdColumn != null && whereSelectTable != null && sourceIdColumn != null) {
+            ExternalConnection mapping = new ExternalConnection(targetColumn, finalSelectColumn, whereIdColumn, whereSelectTable, sourceIdColumn);
             mappings.add(mapping);
             return mappings.size() - 1;
         }
@@ -434,6 +436,7 @@ public class DataMapWizard extends JFrame {
     }
 
     // Updated to use the new method names (getFinalSelectColumn, getFinalIdColumn)
+    // Update removeMappingsWithSource method:
     private void removeMappingsWithSource(String tableName) {
         List<Mapping> mappingsToRemove = new ArrayList<>();
         for (Mapping mapping : mappings) {
@@ -451,7 +454,8 @@ public class DataMapWizard extends JFrame {
                 ExternalConnection ec = (ExternalConnection)mapping;
                 if (ec.getSourceIdColumn().getTable().getName().equals(tableName) ||
                         ec.getFinalSelectColumn().getTable().getName().equals(tableName) ||
-                        ec.getFinalIdColumn().getTable().getName().equals(tableName)) {
+                        ec.getWhereIdColumn().getTable().getName().equals(tableName) ||
+                        ec.getWhereSelectTable().getTable().getName().equals(tableName)) {
                     mappingsToRemove.add(mapping);
                 }
 
@@ -502,8 +506,10 @@ public class DataMapWizard extends JFrame {
                         ec.getSourceIdColumn().getName().equals(columnName)) ||
                         (ec.getFinalSelectColumn().getTable().getName().equals(tableName) &&
                                 ec.getFinalSelectColumn().getName().equals(columnName)) ||
-                        (ec.getFinalIdColumn().getTable().getName().equals(tableName) &&
-                                ec.getFinalIdColumn().getName().equals(columnName))) {
+                        (ec.getWhereIdColumn().getTable().getName().equals(tableName) &&
+                                ec.getWhereIdColumn().getName().equals(columnName)) ||
+                        (ec.getWhereSelectTable().getTable().getName().equals(tableName) &&
+                                ec.getWhereSelectTable().getName().equals(columnName))) {
                     mappingsToRemove.add(mapping);
                 }
 
@@ -761,6 +767,8 @@ public class DataMapWizard extends JFrame {
         }
     }
 
+
+    // Update refreshExternalConnectionPanel method:
     private void refreshExternalConnectionPanel() {
         try {
             // Get access to the mappingsModel field
@@ -795,11 +803,20 @@ public class DataMapWizard extends JFrame {
                             ecMapping.getTargetColumn().getName();
                     String finalSelectKey = ecMapping.getFinalSelectColumn().getTable().getName() + "." +
                             ecMapping.getFinalSelectColumn().getName();
+                    String whereIdKey = ecMapping.getWhereIdColumn().getTable().getName() + "." +
+                            ecMapping.getWhereIdColumn().getName();
                     String sourceIdKey = ecMapping.getSourceIdColumn().getTable().getName() + "." +
                             ecMapping.getSourceIdColumn().getName();
 
                     StringBuilder displayBuilder = new StringBuilder();
-                    displayBuilder.append(targetKey).append(" <- ").append(finalSelectKey).append(" (Join on ").append(sourceIdKey).append(")");
+                    displayBuilder.append(targetKey)
+                            .append(" <- ")
+                            .append(finalSelectKey)
+                            .append(" (Where ")
+                            .append(whereIdKey)
+                            .append(" = ")
+                            .append(sourceIdKey)
+                            .append(")");
 
                     // Add LEFT JOIN info if any
                     if (!ecMapping.getJoins().isEmpty()) {

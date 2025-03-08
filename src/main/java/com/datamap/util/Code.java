@@ -88,11 +88,11 @@ public class Code {
 
                 StringBuilder commentBuilder = new StringBuilder();
                 commentBuilder.append("//查询[").append(externalMapping.getFinalSelectColumn().getTable().getName())
-                        .append("].{").append(externalMapping.getFinalIdColumn().getName()).append("}为[")
+                        .append("].{").append(externalMapping.getFinalSelectColumn().getName()).append("}，条件是[")
+                        .append(externalMapping.getWhereSelectTable().getTable().getName()).append("].{")
+                        .append(externalMapping.getWhereIdColumn().getName()).append("}=[")
                         .append(externalMapping.getSourceIdColumn().getTable().getName()).append("].{")
-                        .append(externalMapping.getSourceIdColumn().getName()).append("}的[")
-                        .append(externalMapping.getFinalSelectColumn().getTable().getName()).append("].{")
-                        .append(externalMapping.getFinalSelectColumn().getName()).append("}-->");
+                        .append(externalMapping.getSourceIdColumn().getName()).append("}-->");
                 
                 // Add LEFT JOIN comments if any
                 List<LeftJoin> joins = externalMapping.getJoins();

@@ -18,7 +18,8 @@ public class ExternalConnectionPanel extends JPanel {
     private JComboBox<String> targetColumnCombo;
     private JComboBox<String> finalSelectTableCombo;
     private JComboBox<String> finalSelectColumnCombo;
-    private JComboBox<String> finalIdColumnCombo;
+    private JComboBox<String> whereSelectTableCombo;
+    private JComboBox<String> whereIdColumnCombo;
     private JComboBox<String> sourceTableCombo;
     private JComboBox<String> sourceIdColumnCombo;
     private DefaultListModel<String> mappingsModel;
@@ -41,7 +42,7 @@ public class ExternalConnectionPanel extends JPanel {
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
 
         // Input panel
-        JPanel inputPanel = new JPanel(new GridLayout(6, 2, 10, 10));
+        JPanel inputPanel = new JPanel(new GridLayout(7, 2, 10, 10));
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
@@ -55,10 +56,14 @@ public class ExternalConnectionPanel extends JPanel {
         inputPanel.add(new JLabel("Final Select Column:"));
         finalSelectColumnCombo = new JComboBox<>();
         inputPanel.add(finalSelectColumnCombo);
+        
+        inputPanel.add(new JLabel("Where Select Table:"));
+        whereSelectTableCombo = new JComboBox<>();
+        inputPanel.add(whereSelectTableCombo);
 
-        inputPanel.add(new JLabel("Final ID Column:"));
-        finalIdColumnCombo = new JComboBox<>();
-        inputPanel.add(finalIdColumnCombo);
+        inputPanel.add(new JLabel("Where ID Column:"));
+        whereIdColumnCombo = new JComboBox<>();
+        inputPanel.add(whereIdColumnCombo);
 
         inputPanel.add(new JLabel("Source Table:"));
         sourceTableCombo = new JComboBox<>();
@@ -145,7 +150,14 @@ public class ExternalConnectionPanel extends JPanel {
         finalSelectTableCombo.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                updateFinalSelectColumnCombos();
+                updateFinalSelectColumnCombo();
+            }
+        });
+        
+        whereSelectTableCombo.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateWhereIdColumnCombo();
             }
         });
     }
@@ -162,19 +174,22 @@ public class ExternalConnectionPanel extends JPanel {
         String targetColumnKey = (String) targetColumnCombo.getSelectedItem();
         String finalSelectTableName = (String) finalSelectTableCombo.getSelectedItem();
         String finalSelectColumnName = (String) finalSelectColumnCombo.getSelectedItem();
-        String finalIdColumnName = (String) finalIdColumnCombo.getSelectedItem();
+        String whereSelectTableName = (String) whereSelectTableCombo.getSelectedItem();
+        String whereIdColumnName = (String) whereIdColumnCombo.getSelectedItem();
         String sourceTableName = (String) sourceTableCombo.getSelectedItem();
         String sourceIdColumnName = (String) sourceIdColumnCombo.getSelectedItem();
 
         if (targetColumnKey != null && finalSelectTableName != null && finalSelectColumnName != null &&
-                finalIdColumnName != null && sourceTableName != null && sourceIdColumnName != null) {
+                whereSelectTableName != null && whereIdColumnName != null && 
+                sourceTableName != null && sourceIdColumnName != null) {
 
             String[] targetParts = targetColumnKey.split("\\.");
 
             if (targetParts.length == 2) {
                 int mappingIndex = wizard.addExternalConnectionMapping(targetParts[0], targetParts[1],
                         finalSelectTableName, finalSelectColumnName,
-                        finalIdColumnName, sourceTableName, sourceIdColumnName);
+                        whereSelectTableName, whereIdColumnName, 
+                        sourceTableName, sourceIdColumnName);
                 
                 // Add LEFT JOIN relationships if any
                 for (JoinRow joinRow : joinRows) {
@@ -197,7 +212,11 @@ public class ExternalConnectionPanel extends JPanel {
                              .append(finalSelectTableName)
                              .append(".")
                              .append(finalSelectColumnName)
-                             .append(" (Join on ")
+                             .append(" (Where ")
+                             .append(whereSelectTableName)
+                             .append(".")
+                             .append(whereIdColumnName)
+                             .append(" = ")
                              .append(sourceTableName)
                              .append(".")
                              .append(sourceIdColumnName)
@@ -263,9 +282,8 @@ public class ExternalConnectionPanel extends JPanel {
         }
     }
 
-    private void updateFinalSelectColumnCombos() {
+    private void updateFinalSelectColumnCombo() {
         finalSelectColumnCombo.removeAllItems();
-        finalIdColumnCombo.removeAllItems();
 
         String selectedFinalSelectTable = (String) finalSelectTableCombo.getSelectedItem();
         if (selectedFinalSelectTable != null) {
@@ -273,7 +291,20 @@ public class ExternalConnectionPanel extends JPanel {
                 if (entry.getKey().startsWith(selectedFinalSelectTable + ".")) {
                     String columnName = entry.getKey().substring(selectedFinalSelectTable.length() + 1);
                     finalSelectColumnCombo.addItem(columnName);
-                    finalIdColumnCombo.addItem(columnName);
+                }
+            }
+        }
+    }
+    
+    private void updateWhereIdColumnCombo() {
+        whereIdColumnCombo.removeAllItems();
+
+        String selectedWhereSelectTable = (String) whereSelectTableCombo.getSelectedItem();
+        if (selectedWhereSelectTable != null) {
+            for (Map.Entry<String, SourceColumn> entry : wizard.getSourceColumns().entrySet()) {
+                if (entry.getKey().startsWith(selectedWhereSelectTable + ".")) {
+                    String columnName = entry.getKey().substring(selectedWhereSelectTable.length() + 1);
+                    whereIdColumnCombo.addItem(columnName);
                 }
             }
         }
@@ -282,6 +313,7 @@ public class ExternalConnectionPanel extends JPanel {
     public void updateComponents() {
         targetColumnCombo.removeAllItems();
         finalSelectTableCombo.removeAllItems();
+        whereSelectTableCombo.removeAllItems();
         sourceTableCombo.removeAllItems();
 
         Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
@@ -307,12 +339,14 @@ public class ExternalConnectionPanel extends JPanel {
             if (!exists) {
                 sourceTableCombo.addItem(tableName);
                 finalSelectTableCombo.addItem(tableName);
+                whereSelectTableCombo.addItem(tableName);
             }
         }
 
         // Initialize dependent comboboxes
         updateSourceIdColumnCombo();
-        updateFinalSelectColumnCombos();
+        updateFinalSelectColumnCombo();
+        updateWhereIdColumnCombo();
         
         // Clear join rows
         clearJoinRows();
