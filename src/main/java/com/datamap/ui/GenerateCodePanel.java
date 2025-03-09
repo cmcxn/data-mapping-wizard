@@ -33,6 +33,7 @@ public class GenerateCodePanel extends JPanel {
     private JTextArea codeArea;
     private JButton copyButton;
     private JButton saveButton;
+    private JButton regenerateButton;
 
     public GenerateCodePanel(DataMapWizard wizard) {
         this.wizard = wizard;
@@ -54,6 +55,17 @@ public class GenerateCodePanel extends JPanel {
 
         // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
+        regenerateButton = new JButton("Regenerate Code");
+        regenerateButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateCode();
+                JOptionPane.showMessageDialog(GenerateCodePanel.this,
+                        "Code has been regenerated based on the current configuration.",
+                        "Code Regenerated", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
 
         copyButton = new JButton("Copy to Clipboard");
         copyButton.addActionListener(new ActionListener() {
@@ -87,6 +99,7 @@ public class GenerateCodePanel extends JPanel {
             }
         });
 
+        buttonPanel.add(regenerateButton);
         buttonPanel.add(copyButton);
         buttonPanel.add(saveButton);
         buttonPanel.add(saveConfigButton);

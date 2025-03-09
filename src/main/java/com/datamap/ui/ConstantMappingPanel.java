@@ -1,11 +1,15 @@
 package com.datamap.ui;
 
 import com.datamap.model.TargetColumn;
+import com.datamap.model.mapping.Constant;
+import com.datamap.model.mapping.Mapping;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ConstantMappingPanel extends JPanel {
@@ -31,19 +35,21 @@ public class ConstantMappingPanel extends JPanel {
         JPanel inputPanel = new JPanel(new GridLayout(2, 2, 10, 10));
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        inputPanel.add(new JLabel("Constant Value:"));
-        constantValueField = new JTextField(20);
-        inputPanel.add(constantValueField);
-
         inputPanel.add(new JLabel("Target Column:"));
         targetColumnCombo = new JComboBox<>();
         inputPanel.add(targetColumnCombo);
+
+        inputPanel.add(new JLabel("Constant Value:"));
+        constantValueField = new JTextField(20);
+        inputPanel.add(constantValueField);
 
         // Mappings panel
         JPanel mappingsPanel = new JPanel(new BorderLayout());
         mappingsPanel.setBorder(BorderFactory.createTitledBorder("Constant Mappings"));
 
         mappingsList = new JList<>(mappingsModel);
+        // Enable multiple selection
+        mappingsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         JScrollPane scrollPane = new JScrollPane(mappingsList);
         mappingsPanel.add(scrollPane, BorderLayout.CENTER);
 
@@ -91,24 +97,71 @@ public class ConstantMappingPanel extends JPanel {
                 mappingsModel.addElement(targetColumnKey + " <- Constant(\"" + constantValue + "\")");
                 constantValueField.setText("");
             }
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Please select a target column and enter a constant value.",
+                    "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
 
     private void deleteMapping() {
-        int selectedIndex = mappingsList.getSelectedIndex();
-        if (selectedIndex >= 0) {
-            mappingsModel.remove(selectedIndex);
-            wizard.removeMapping(selectedIndex, "Constant");
+        // Get all selected indices
+        int[] selectedIndices = mappingsList.getSelectedIndices();
+        if (selectedIndices.length == 0) return;
+
+        // Create list of mappings to remove
+        List<String> mappingsToRemove = new ArrayList<>();
+        for (int index : selectedIndices) {
+            mappingsToRemove.add(mappingsModel.getElementAt(index));
+        }
+
+        // Remove mappings in reverse order to avoid index shifting
+        for (int i = selectedIndices.length - 1; i >= 0; i--) {
+            int index = selectedIndices[i];
+            mappingsModel.remove(index);
+            wizard.removeMapping(index, "Constant");
+        }
+
+        // Show notification if multiple items were deleted
+        if (selectedIndices.length > 1) {
+            JOptionPane.showMessageDialog(this,
+                    selectedIndices.length + " constant mappings removed.",
+                    "Mappings Removed", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
     public void updateComponents() {
         targetColumnCombo.removeAllItems();
+        mappingsModel.clear();
 
+        // Add target columns
         Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
-
         for (String columnKey : targetColumns.keySet()) {
             targetColumnCombo.addItem(columnKey);
+        }
+
+        // Load existing Constant mappings from wizard
+        refreshMappingsList();
+    }
+
+    /**
+     * Refresh the mappings list based on wizard's current mappings
+     */
+    public void refreshMappingsList() {
+        mappingsModel.clear();
+
+        // Get all mappings from wizard
+        List<Mapping> mappings = wizard.getMappings();
+
+        // Add only Constant mappings to the list
+        for (Mapping mapping : mappings) {
+            if (mapping instanceof Constant) {
+                Constant constantMapping = (Constant) mapping;
+                String targetKey = constantMapping.getTargetColumn().getTable().getName() + "." +
+                        constantMapping.getTargetColumn().getName();
+
+                mappingsModel.addElement(targetKey + " <- Constant(\"" + constantMapping.getConstantValue() + "\")");
+            }
         }
     }
 }

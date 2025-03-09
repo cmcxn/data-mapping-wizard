@@ -584,7 +584,7 @@ public class DataMapWizard extends JFrame {
      * Refreshes all panel UIs to reflect the current data model
      * Called after loading configuration to ensure UI displays loaded data
      */
-    public void refreshAllPanelUIs() {
+    public void refreshAllPanelUIs1() {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -599,6 +599,36 @@ public class DataMapWizard extends JFrame {
                 refreshNoneMappingPanel();
                 refreshDictMappingPanel();
                 refreshConstantMappingPanel();
+                refreshExternalConnectionPanel();
+
+                // Update code panel
+                generateCodePanel.updateCode();
+            }
+        });
+    }
+
+    // 修改现有的 refreshAllPanelUIs 方法中与这三个面板相关的部分
+    public void refreshAllPanelUIs() {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                // Refresh AddTablesPanel
+                refreshAddTablesPanel();
+
+                // Refresh AddColumnsPanel
+                addColumnsPanel.updateComponents();
+                refreshAddColumnsPanel();
+
+                // Refresh mapping panels - 使用新的方式
+                noneMappingPanel.updateComponents();
+                noneMappingPanel.refreshMappingsList();
+
+                dictMappingPanel.updateComponents();
+                dictMappingPanel.refreshMappingsList();
+
+                constantMappingPanel.updateComponents();
+                constantMappingPanel.refreshMappingsList();
+
                 refreshExternalConnectionPanel();
 
                 // Update code panel
