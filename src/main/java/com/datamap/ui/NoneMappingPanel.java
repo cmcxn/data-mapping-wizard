@@ -2,212 +2,329 @@ package com.datamap.ui;
 
 import com.datamap.model.SourceColumn;
 import com.datamap.model.TargetColumn;
-import com.datamap.model.TargetTable;
 import com.datamap.model.mapping.Mapping;
 import com.datamap.model.mapping.None;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.util.Map;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class NoneMappingPanel extends JPanel {
     private DataMapWizard wizard;
     private JComboBox<String> sourceColumnCombo;
     private JComboBox<String> targetColumnCombo;
-    private DefaultListModel<String> mappingsModel;
-    private JList<String> mappingsList;
-
+    private JTable mappingsTable;
+    private DefaultTableModel tableModel;
+    
     public NoneMappingPanel(DataMapWizard wizard) {
         this.wizard = wizard;
-        setLayout(new BorderLayout());
-
-        mappingsModel = new DefaultListModel<>();
-
+        setLayout(new BorderLayout(10, 10));
+        
         initComponents();
     }
-
+    
     private void initComponents() {
+        // Create main panel with padding
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
-
-        // Input panel
-        JPanel inputPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new JComboBox<>();
-        targetColumnCombo.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    updateSourceColumnsForSelectedTarget();
-                }
-            }
-        });
-        inputPanel.add(targetColumnCombo);
-
-        inputPanel.add(new JLabel("Source Column:"));
+        contentPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        // Input panel for mapping creation
+        JPanel inputPanel = new JPanel(new GridBagLayout());
+        inputPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder("Create Direct Mapping"),
+            new EmptyBorder(10, 10, 10, 10)
+        ));
+        
+        // Use GridBagLayout for better control
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(5, 5, 5, 10);
+        
+        // Source column selector
+        inputPanel.add(new JLabel("Source Column:"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         sourceColumnCombo = new JComboBox<>();
-        inputPanel.add(sourceColumnCombo);
-
-        // Mappings panel
-        JPanel mappingsPanel = new JPanel(new BorderLayout());
-        mappingsPanel.setBorder(BorderFactory.createTitledBorder("Direct Mappings"));
-
-        mappingsList = new JList<>(mappingsModel);
-        // Enable multiple selection
-        mappingsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        JScrollPane scrollPane = new JScrollPane(mappingsList);
-        mappingsPanel.add(scrollPane, BorderLayout.CENTER);
-
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton addMappingButton = new JButton("Add Direct Mapping");
-        addMappingButton.addActionListener(new ActionListener() {
+        inputPanel.add(sourceColumnCombo, gbc);
+        
+        // Target column selector
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        inputPanel.add(new JLabel("Target Column:"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        targetColumnCombo = new JComboBox<>();
+        inputPanel.add(targetColumnCombo, gbc);
+        
+        // Add button
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.insets = new Insets(15, 5, 5, 5);
+        JButton addButton = new JButton("Add Direct Mapping");
+        addButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 addMapping();
             }
         });
-
-        JButton deleteMappingButton = new JButton("Delete Direct Mapping");
-        deleteMappingButton.addActionListener(new ActionListener() {
+        inputPanel.add(addButton, gbc);
+        
+        // Table to display mappings
+        String[] columnNames = {"Target Column", "Source Column", "Actions"};
+        tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                deleteMapping();
+            public boolean isCellEditable(int row, int column) {
+                // Make only the action column editable
+                return column == 2;
+            }
+        };
+        mappingsTable = new JTable(tableModel);
+        mappingsTable.getColumnModel().getColumn(2).setCellRenderer(new ButtonRenderer());
+        mappingsTable.getColumnModel().getColumn(2).setCellEditor(new ButtonEditor(new JCheckBox(), "Delete"));
+        
+        // Listen for button clicks in the table
+        mappingsTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int column = mappingsTable.getColumnModel().getColumnIndexAtX(e.getX());
+                int row = e.getY() / mappingsTable.getRowHeight();
+                
+                if (row < mappingsTable.getRowCount() && row >= 0 && column == 2) {
+                    deleteMapping(row);
+                }
             }
         });
-
-        buttonPanel.add(addMappingButton);
-        buttonPanel.add(deleteMappingButton);
-
+        
+        JScrollPane scrollPane = new JScrollPane(mappingsTable);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Existing Mappings"));
+        
+        // Layout
         contentPanel.add(inputPanel, BorderLayout.NORTH);
-        contentPanel.add(mappingsPanel, BorderLayout.CENTER);
-        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
-
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
+        
         add(contentPanel, BorderLayout.CENTER);
-
+        
+        // Header
         JLabel instructionLabel = new JLabel("Step 3: Create Direct Mappings (None Type)");
         instructionLabel.setFont(new Font(instructionLabel.getFont().getName(), Font.BOLD, 14));
         add(instructionLabel, BorderLayout.NORTH);
     }
-
-    private void updateSourceColumnsForSelectedTarget() {
-        String targetColumnKey = (String) targetColumnCombo.getSelectedItem();
-        if (targetColumnKey == null) return;
-
-        // Clear the source column combo box
-        sourceColumnCombo.removeAllItems();
-
-        // Parse the target column key to get the table name
-        String[] targetParts = targetColumnKey.split("\\.");
-        if (targetParts.length != 2) return;
-
-        String targetTableName = targetParts[0];
-
-        // Find the corresponding target table
-        TargetTable targetTable = wizard.getTargetTables().get(targetTableName);
-        if (targetTable == null) return;
-
-        // Get the source table associated with this target table
-        String sourceTableName = targetTable.getSourceTable().getName();
-
-        // Add only source columns from the associated source table
-        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
-        for (Map.Entry<String, SourceColumn> entry : sourceColumns.entrySet()) {
-            String columnKey = entry.getKey();
-            if (columnKey.startsWith(sourceTableName + ".")) {
-                sourceColumnCombo.addItem(columnKey);
-            }
-        }
-    }
-
+    
     private void addMapping() {
         String sourceColumnKey = (String) sourceColumnCombo.getSelectedItem();
         String targetColumnKey = (String) targetColumnCombo.getSelectedItem();
-
+        
         if (sourceColumnKey != null && targetColumnKey != null) {
             String[] sourceParts = sourceColumnKey.split("\\.");
             String[] targetParts = targetColumnKey.split("\\.");
-
+            
             if (sourceParts.length == 2 && targetParts.length == 2) {
+                // Check if this mapping already exists
+                int existingMappingIndex = findExistingMapping(targetParts[0], targetParts[1]);
+                if (existingMappingIndex >= 0) {
+                    int option = JOptionPane.showConfirmDialog(this, 
+                            "A mapping for this target column already exists. Replace it?", 
+                            "Mapping Already Exists", 
+                            JOptionPane.YES_NO_OPTION);
+                    
+                    if (option == JOptionPane.YES_OPTION) {
+                        deleteMapping(existingMappingIndex);
+                    } else {
+                        return;
+                    }
+                }
+                
+                // Add the mapping to the wizard
                 wizard.addNoneMapping(targetParts[0], targetParts[1], sourceParts[0], sourceParts[1]);
-                mappingsModel.addElement(targetColumnKey + " <- " + sourceColumnKey);
+                
+                // Add to table
+                Object[] rowData = {targetColumnKey, sourceColumnKey, "Delete"};
+                tableModel.addRow(rowData);
+                
+                JOptionPane.showMessageDialog(this, 
+                        "Mapping created successfully: " + targetColumnKey + " <- " + sourceColumnKey, 
+                        "Mapping Created", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, 
+                    "Please select both source and target columns", 
+                    "Invalid Selection", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+    
+    private void deleteMapping(int row) {
+        if (row >= 0 && row < tableModel.getRowCount()) {
+            String targetCol = (String) tableModel.getValueAt(row, 0);
+            
+            // Ask for confirmation
+            int option = JOptionPane.showConfirmDialog(this,
+                    "Are you sure you want to delete the mapping for " + targetCol + "?", 
+                    "Confirm Deletion", 
+                    JOptionPane.YES_NO_OPTION);
+            
+            if (option == JOptionPane.YES_OPTION) {
+                // Find correct index in the wizard's mapping list
+                int mappingIndex = findMappingIndexInWizard(row);
+                if (mappingIndex >= 0) {
+                    wizard.removeMapping(mappingIndex, "None");
+                    tableModel.removeRow(row);
+                    JOptionPane.showMessageDialog(this, 
+                            "Mapping deleted successfully", 
+                            "Mapping Deleted", JOptionPane.INFORMATION_MESSAGE);
+                }
             }
         }
     }
-
-    private void deleteMapping() {
-        // Get all selected indices
-        int[] selectedIndices = mappingsList.getSelectedIndices();
-        if (selectedIndices.length == 0) return;
-
-        // Create list of mappings to remove
-        List<String> mappingsToRemove = new ArrayList<>();
-        for (int index : selectedIndices) {
-            mappingsToRemove.add(mappingsModel.getElementAt(index));
+    
+    private int findExistingMapping(String tableName, String columnName) {
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            String targetCol = (String) tableModel.getValueAt(i, 0);
+            String[] targetParts = targetCol.split("\\.");
+            
+            if (targetParts.length == 2 && 
+                targetParts[0].equals(tableName) && 
+                targetParts[1].equals(columnName)) {
+                return i;
+            }
         }
-
-        // Remove mappings in reverse order to avoid index shifting
-        for (int i = selectedIndices.length - 1; i >= 0; i--) {
-            int index = selectedIndices[i];
-            mappingsModel.remove(index);
-            wizard.removeMapping(index, "None");
-        }
-
-        // Show notification if multiple items were deleted
-        if (selectedIndices.length > 1) {
-            JOptionPane.showMessageDialog(this,
-                    selectedIndices.length + " direct mappings removed.",
-                    "Mappings Removed", JOptionPane.INFORMATION_MESSAGE);
-        }
+        return -1;
     }
-
+    
+    private int findMappingIndexInWizard(int tableRow) {
+        if (tableRow < 0 || tableRow >= tableModel.getRowCount()) return -1;
+        
+        String targetCol = (String) tableModel.getValueAt(tableRow, 0);
+        String[] targetParts = targetCol.split("\\.");
+        
+        if (targetParts.length != 2) return -1;
+        
+        // Find the actual index in the wizard's mapping list
+        List<Mapping> allMappings = wizard.getMappings();
+        for (int i = 0; i < allMappings.size(); i++) {
+            Mapping mapping = allMappings.get(i);
+            if (mapping instanceof None) {
+                String mappingTableName = mapping.getTargetColumn().getTable().getName();
+                String mappingColumnName = mapping.getTargetColumn().getName();
+                
+                if (mappingTableName.equals(targetParts[0]) && 
+                    mappingColumnName.equals(targetParts[1])) {
+                    return i;
+                }
+            }
+        }
+        
+        return -1;
+    }
+    
     public void updateComponents() {
-        targetColumnCombo.removeAllItems();
         sourceColumnCombo.removeAllItems();
-        mappingsModel.clear();
-
-        // Add target columns
+        targetColumnCombo.removeAllItems();
+        
+        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
         Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
+        
+        for (String columnKey : sourceColumns.keySet()) {
+            sourceColumnCombo.addItem(columnKey);
+        }
+        
         for (String columnKey : targetColumns.keySet()) {
             targetColumnCombo.addItem(columnKey);
         }
-
-        // Update source columns based on selected target (if any)
-        if (targetColumnCombo.getItemCount() > 0) {
-            updateSourceColumnsForSelectedTarget();
-        }
-
-        // Load existing None mappings from wizard
-        refreshMappingsList();
+        
+        refreshMappingsTable();
     }
-
-    /**
-     * Refresh the mappings list based on wizard's current mappings
-     */
-    public void refreshMappingsList() {
-        mappingsModel.clear();
-
-        // Get all mappings from wizard
+    
+    private void refreshMappingsTable() {
+        // Clear existing rows
+        while (tableModel.getRowCount() > 0) {
+            tableModel.removeRow(0);
+        }
+        
+        // Populate with current mappings
         List<Mapping> mappings = wizard.getMappings();
-
-        // Add only None mappings to the list
         for (Mapping mapping : mappings) {
             if (mapping instanceof None) {
                 None noneMapping = (None) mapping;
-                String targetKey = noneMapping.getTargetColumn().getTable().getName() + "." +
-                        noneMapping.getTargetColumn().getName();
-                String sourceKey = noneMapping.getSourceColumn().getTable().getName() + "." +
-                        noneMapping.getSourceColumn().getName();
-
-                mappingsModel.addElement(targetKey + " <- " + sourceKey);
+                
+                String targetTable = noneMapping.getTargetColumn().getTable().getName();
+                String targetColumn = noneMapping.getTargetColumn().getName();
+                String sourceTable = noneMapping.getSourceColumn().getTable().getName();
+                String sourceColumn = noneMapping.getSourceColumn().getName();
+                
+                String targetKey = targetTable + "." + targetColumn;
+                String sourceKey = sourceTable + "." + sourceColumn;
+                
+                Object[] rowData = {targetKey, sourceKey, "Delete"};
+                tableModel.addRow(rowData);
             }
+        }
+    }
+    
+    // Custom renderer for the button column
+    class ButtonRenderer extends JButton implements javax.swing.table.TableCellRenderer {
+        public ButtonRenderer() {
+            setOpaque(true);
+        }
+        
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            setText((value == null) ? "Delete" : value.toString());
+            return this;
+        }
+    }
+    
+    // Custom editor for the button column
+    class ButtonEditor extends DefaultCellEditor {
+        protected JButton button;
+        private String label;
+        private boolean isPushed;
+        
+        public ButtonEditor(JCheckBox checkBox, String label) {
+            super(checkBox);
+            this.label = label;
+            button = new JButton();
+            button.setOpaque(true);
+            button.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    fireEditingStopped();
+                }
+            });
+        }
+        
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                boolean isSelected, int row, int column) {
+            button.setText(label);
+            isPushed = true;
+            return button;
+        }
+        
+        @Override
+        public Object getCellEditorValue() {
+            isPushed = false;
+            return label;
+        }
+        
+        @Override
+        public boolean stopCellEditing() {
+            isPushed = false;
+            return super.stopCellEditing();
         }
     }
 }
