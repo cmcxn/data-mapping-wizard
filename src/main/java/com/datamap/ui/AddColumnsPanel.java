@@ -51,7 +51,7 @@ public class AddColumnsPanel extends JPanel {
         sourcePanel.setBorder(BorderFactory.createTitledBorder("Source Columns"));
 
         JPanel sourceInputPanel = new JPanel(new GridLayout(4, 1, 5, 5));
-        sourceInputPanel.add(new JLabel("Source Table:"));
+        sourceInputPanel.add(new JLabel("Source Table/View:"));
         sourceTableCombo = new JComboBox<>();
         sourceTableCombo.addItemListener(new ItemListener() {
             @Override
@@ -227,54 +227,72 @@ public class AddColumnsPanel extends JPanel {
         instructionLabel.setFont(new Font(instructionLabel.getFont().getName(), Font.BOLD, 14));
         add(instructionLabel, BorderLayout.NORTH);
     }
-
     private void updateSourceColumns() {
-        String tableName = (String) sourceTableCombo.getSelectedItem();
-        if (tableName == null) return;
+        String tableOrViewName = (String) sourceTableCombo.getSelectedItem();
+        if (tableOrViewName == null) return;
 
-        // Get existing columns from the model
-        List<String> existingColumns = getExistingSourceColumns(tableName);
+        // 获取不带前缀的表名/视图名
+        String cleanTableName = DatabaseConnectionManager.getCleanName(tableOrViewName);
 
-        // Always try to fetch all columns from database
+        // 获取已存在的列
+        List<String> existingColumns = getExistingSourceColumns(cleanTableName);
+
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         try {
-            // Get the source table with its data source
-            SourceTable sourceTable = wizard.getSourceTables().get(tableName);
-            if (sourceTable == null) return;
+            // 关键修改：使用清理后的表名从wizard中获取SourceTable
+            SourceTable sourceTable = wizard.getSourceTables().get(cleanTableName);
 
-            // Find the data source this table belongs to
+            // 如果找不到，则尝试查找是否存在带前缀的表名
+            if (sourceTable == null && !tableOrViewName.equals(cleanTableName)) {
+                // 这种情况下，wizard中可能存储了带前缀的视图名
+                sourceTable = wizard.getSourceTables().get(tableOrViewName);
+            }
+
+            if (sourceTable == null) {
+                // 如果仍然找不到，尝试遍历所有源表检查清理后的名称是否匹配
+                for (Map.Entry<String, SourceTable> entry : wizard.getSourceTables().entrySet()) {
+                    if (DatabaseConnectionManager.getCleanName(entry.getKey()).equals(cleanTableName)) {
+                        sourceTable = entry.getValue();
+                        break;
+                    }
+                }
+            }
+
+            if (sourceTable == null) {
+                JOptionPane.showMessageDialog(this,
+                        "找不到表或视图: " + tableOrViewName,
+                        "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // 找到数据源
             DataSource dataSource = findDataSourceForTable(sourceTable.getDataSourceName());
             if (dataSource == null) return;
 
-            // Get columns from database
+            // 获取列信息 - 使用正确的表/视图名称
             Connection conn = DatabaseConnectionManager.getConnection(dataSource);
-            List<String> columnsFromDb = DatabaseConnectionManager.getColumns(conn, tableName);
+            List<String> columnsFromDb = DatabaseConnectionManager.getColumns(conn, cleanTableName);
 
-            // Combine existing columns with database columns
+            // 合并列信息
             for (String column : columnsFromDb) {
                 if (!existingColumns.contains(column)) {
                     existingColumns.add(column);
                 }
             }
 
-            // Sort columns alphabetically
+            // 排序并更新UI
             Collections.sort(existingColumns);
-
-            // Update the autocomplete items
             sourceColumnCombo.setAutoCompleteItems(existingColumns);
-
-            // Store the full list of available columns for selection operations
             availableSourceColumns = new ArrayList<>(existingColumns);
 
             if (conn != null) conn.close();
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this,
-                    "Error retrieving columns: " + e.getMessage(),
-                    "Database Error", JOptionPane.ERROR_MESSAGE);
+                    "获取列信息错误: " + e.getMessage(),
+                    "数据库错误", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
 
-            // If database access fails, at least use the existing columns
             if (!existingColumns.isEmpty()) {
                 sourceColumnCombo.setAutoCompleteItems(existingColumns);
                 availableSourceColumns = new ArrayList<>(existingColumns);
@@ -288,6 +306,10 @@ public class AddColumnsPanel extends JPanel {
         String tableName = (String) targetTableCombo.getSelectedItem();
         if (tableName == null) return;
 
+        // Target tables are always regular tables, not views
+        // But ensure we have a clean name
+        String cleanTableName = DatabaseConnectionManager.getCleanName(tableName);
+
         // Clear previously stored available columns first
         availableTargetColumns.clear();
 
@@ -295,7 +317,7 @@ public class AddColumnsPanel extends JPanel {
 
         try {
             // Get the target table with its data source
-            TargetTable targetTable = wizard.getTargetTables().get(tableName);
+            TargetTable targetTable = wizard.getTargetTables().get(cleanTableName);
             if (targetTable == null) return;
 
             // Find the data source this table belongs to
@@ -309,10 +331,10 @@ public class AddColumnsPanel extends JPanel {
             }
 
             // Force direct database query to get all columns
-            List<String> columnsFromDb = DatabaseConnectionManager.getColumns(conn, tableName);
+            List<String> columnsFromDb = DatabaseConnectionManager.getColumns(conn, cleanTableName);
 
             // Also get any columns from loaded configuration
-            List<String> existingColumns = getExistingTargetColumns(tableName);
+            List<String> existingColumns = getExistingTargetColumns(cleanTableName);
 
             // Merge columns from both sources
             for (String column : columnsFromDb) {
@@ -344,7 +366,7 @@ public class AddColumnsPanel extends JPanel {
             e.printStackTrace();
 
             // If database access fails, fall back to existing columns from config
-            List<String> existingColumns = getExistingTargetColumns(tableName);
+            List<String> existingColumns = getExistingTargetColumns(cleanTableName);
             if (!existingColumns.isEmpty()) {
                 availableTargetColumns = new ArrayList<>(existingColumns);
                 targetColumnCombo.setAutoCompleteItems(existingColumns);
@@ -352,10 +374,8 @@ public class AddColumnsPanel extends JPanel {
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
-
-        // Debug output to check what columns were loaded
-        System.out.println("Target columns loaded for table " + tableName + ": " + availableTargetColumns.size());
     }
+
     /**
      * Get existing source columns for a table from the wizard's data model
      */
@@ -364,9 +384,13 @@ public class AddColumnsPanel extends JPanel {
         Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
 
         for (Map.Entry<String, SourceColumn> entry : sourceColumns.entrySet()) {
-            if (entry.getKey().startsWith(tableName + ".")) {
+            // Use the clean name (without VIEW: prefix) for comparison
+            String entryTable = entry.getKey().split("\\.")[0];
+            String cleanEntryTable = DatabaseConnectionManager.getCleanName(entryTable);
+
+            if (cleanEntryTable.equals(tableName)) {
                 // Extract just the column name part after the "tableName."
-                String columnName = entry.getKey().substring(tableName.length() + 1);
+                String columnName = entry.getKey().substring(entryTable.length() + 1);
                 columns.add(columnName);
             }
         }
@@ -416,14 +440,20 @@ public class AddColumnsPanel extends JPanel {
     }
 
     private void addSourceColumn() {
-        String tableName = (String) sourceTableCombo.getSelectedItem();
+        String tableOrViewName = (String) sourceTableCombo.getSelectedItem();
         String columnName = sourceColumnCombo.getSelectedText();
 
-        if (tableName != null && columnName != null && !columnName.trim().isEmpty()) {
+        if (tableOrViewName != null && columnName != null && !columnName.trim().isEmpty()) {
+            // Get clean table name without VIEW: prefix for internal use
+            String cleanTableName = DatabaseConnectionManager.getCleanName(tableOrViewName);
+
             // Check if column is already added
-            String columnKey = tableName + "." + columnName;
+            String columnKey = cleanTableName + "." + columnName;
             for (int i = 0; i < sourceColumnsModel.size(); i++) {
-                if (sourceColumnsModel.getElementAt(i).equals(columnKey)) {
+                String existingKey = sourceColumnsModel.getElementAt(i);
+                String existingCleanKey = DatabaseConnectionManager.getCleanName(existingKey.split("\\.")[0])
+                        + "." + existingKey.split("\\.")[1];
+                if (existingCleanKey.equals(columnKey)) {
                     JOptionPane.showMessageDialog(this,
                             "This column has already been added.",
                             "Duplicate Column", JOptionPane.WARNING_MESSAGE);
@@ -431,8 +461,9 @@ public class AddColumnsPanel extends JPanel {
                 }
             }
 
-            wizard.addSourceColumn(tableName, columnName);
-            sourceColumnsModel.addElement(columnKey);
+            wizard.addSourceColumn(cleanTableName, columnName);
+            // Keep the original name format (with or without VIEW: prefix) in the UI list
+            sourceColumnsModel.addElement(tableOrViewName + "." + columnName);
         } else {
             JOptionPane.showMessageDialog(this,
                     "Please select or enter a valid column name.",
@@ -460,7 +491,9 @@ public class AddColumnsPanel extends JPanel {
             // 从数据模型中删除
             String[] parts = selectedColumn.split("\\.");
             if (parts.length == 2) {
-                wizard.removeSourceColumn(parts[0], parts[1]);
+                // Use clean table name without VIEW: prefix for internal operations
+                String cleanTableName = DatabaseConnectionManager.getCleanName(parts[0]);
+                wizard.removeSourceColumn(cleanTableName, parts[1]);
             }
         }
 
@@ -529,33 +562,45 @@ public class AddColumnsPanel extends JPanel {
         }
     }
 
-    // New methods for column selection operations
+    // Modified selection operations to handle view names with prefixes
 
     private void selectAllSourceColumns() {
-        String tableName = (String) sourceTableCombo.getSelectedItem();
-        if (tableName == null || availableSourceColumns.isEmpty()) {
+        String tableOrViewName = (String) sourceTableCombo.getSelectedItem();
+        if (tableOrViewName == null || availableSourceColumns.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "No source columns available to select.",
                     "Selection Error", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
+        // Get clean table name for internal operations
+        String cleanTableName = DatabaseConnectionManager.getCleanName(tableOrViewName);
+
         int addedCount = 0;
         for (String columnName : availableSourceColumns) {
-            String columnKey = tableName + "." + columnName;
+            // Use the clean table name for checking duplicates
+            String cleanColumnKey = cleanTableName + "." + columnName;
 
             // Check if column is already added
             boolean exists = false;
             for (int i = 0; i < sourceColumnsModel.size(); i++) {
-                if (sourceColumnsModel.getElementAt(i).equals(columnKey)) {
-                    exists = true;
-                    break;
+                String existingKey = sourceColumnsModel.getElementAt(i);
+                String[] parts = existingKey.split("\\.");
+                if (parts.length == 2) {
+                    String existingCleanTableName = DatabaseConnectionManager.getCleanName(parts[0]);
+                    String existingColumnName = parts[1];
+                    if (existingCleanTableName.equals(cleanTableName) && existingColumnName.equals(columnName)) {
+                        exists = true;
+                        break;
+                    }
                 }
             }
 
             if (!exists) {
-                wizard.addSourceColumn(tableName, columnName);
-                sourceColumnsModel.addElement(columnKey);
+                // Add to data model with clean name
+                wizard.addSourceColumn(cleanTableName, columnName);
+                // Add to UI list with original format
+                sourceColumnsModel.addElement(tableOrViewName + "." + columnName);
                 addedCount++;
             }
         }
@@ -579,15 +624,22 @@ public class AddColumnsPanel extends JPanel {
             return;
         }
 
-        String tableName = (String) sourceTableCombo.getSelectedItem();
-        if (tableName == null) return;
+        String tableOrViewName = (String) sourceTableCombo.getSelectedItem();
+        if (tableOrViewName == null) return;
+
+        // Get clean table name for internal operations
+        String cleanTableName = DatabaseConnectionManager.getCleanName(tableOrViewName);
 
         // Create a list of columns to remove
         List<String> columnsToRemove = new ArrayList<>();
         for (int i = 0; i < sourceColumnsModel.size(); i++) {
             String columnKey = sourceColumnsModel.getElementAt(i);
-            if (columnKey.startsWith(tableName + ".")) {
-                columnsToRemove.add(columnKey);
+            String[] parts = columnKey.split("\\.");
+            if (parts.length == 2) {
+                String existingCleanTableName = DatabaseConnectionManager.getCleanName(parts[0]);
+                if (existingCleanTableName.equals(cleanTableName)) {
+                    columnsToRemove.add(columnKey);
+                }
             }
         }
 
@@ -596,7 +648,8 @@ public class AddColumnsPanel extends JPanel {
             sourceColumnsModel.removeElement(columnKey);
             String[] parts = columnKey.split("\\.");
             if (parts.length == 2) {
-                wizard.removeSourceColumn(parts[0], parts[1]);
+                // Use clean table name when removing from wizard data model
+                wizard.removeSourceColumn(cleanTableName, parts[1]);
             }
         }
 
@@ -608,38 +661,53 @@ public class AddColumnsPanel extends JPanel {
     }
 
     private void invertSourceColumnSelection() {
-        String tableName = (String) sourceTableCombo.getSelectedItem();
-        if (tableName == null || availableSourceColumns.isEmpty()) {
+        String tableOrViewName = (String) sourceTableCombo.getSelectedItem();
+        if (tableOrViewName == null || availableSourceColumns.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "No source columns available to select.",
                     "Selection Error", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
+        // Get clean table name for internal operations
+        String cleanTableName = DatabaseConnectionManager.getCleanName(tableOrViewName);
+
         // Create a set of currently selected columns
         List<String> currentlySelected = new ArrayList<>();
         for (int i = 0; i < sourceColumnsModel.size(); i++) {
             String columnKey = sourceColumnsModel.getElementAt(i);
-            if (columnKey.startsWith(tableName + ".")) {
-                String[] parts = columnKey.split("\\.");
-                if (parts.length == 2) {
-                    currentlySelected.add(parts[1]);
+            String[] parts = columnKey.split("\\.");
+            if (parts.length == 2) {
+                String existingCleanTableName = DatabaseConnectionManager.getCleanName(parts[0]);
+                if (existingCleanTableName.equals(cleanTableName)) {
+                    currentlySelected.add(parts[1]);  // Just store the column name part
                 }
             }
         }
 
         // Remove currently selected columns
         for (String columnName : currentlySelected) {
-            wizard.removeSourceColumn(tableName, columnName);
-            sourceColumnsModel.removeElement(tableName + "." + columnName);
+            wizard.removeSourceColumn(cleanTableName, columnName);
+
+            // Find and remove from sourceColumnsModel
+            for (int i = 0; i < sourceColumnsModel.getSize(); i++) {
+                String entry = sourceColumnsModel.getElementAt(i);
+                String[] parts = entry.split("\\.");
+                if (parts.length == 2 &&
+                        DatabaseConnectionManager.getCleanName(parts[0]).equals(cleanTableName) &&
+                        parts[1].equals(columnName)) {
+                    sourceColumnsModel.remove(i);
+                    break;
+                }
+            }
         }
 
         // Add currently unselected columns
         int addedCount = 0;
         for (String columnName : availableSourceColumns) {
             if (!currentlySelected.contains(columnName)) {
-                wizard.addSourceColumn(tableName, columnName);
-                sourceColumnsModel.addElement(tableName + "." + columnName);
+                wizard.addSourceColumn(cleanTableName, columnName);
+                sourceColumnsModel.addElement(tableOrViewName + "." + columnName);
                 addedCount++;
             }
         }
@@ -768,6 +836,7 @@ public class AddColumnsPanel extends JPanel {
                         addedCount + " columns added.",
                 "Selection Inverted", JOptionPane.INFORMATION_MESSAGE);
     }
+
     public void updateComponents() {
         // Clear and update the source table combo
         sourceTableCombo.removeAllItems();
@@ -778,6 +847,7 @@ public class AddColumnsPanel extends JPanel {
         java.util.Arrays.sort(sourceTableNames);
 
         for (String tableName : sourceTableNames) {
+            // 添加表/视图名，保持原有的前缀格式（如果是视图）
             sourceTableCombo.addItem(tableName);
         }
 
@@ -822,5 +892,10 @@ public class AddColumnsPanel extends JPanel {
         for (Map.Entry<String, TargetColumn> entry : targetColumns.entrySet()) {
             targetColumnsModel.addElement(entry.getKey());
         }
+    }
+
+    public void refreshMappingsList() {
+        // Clear and refresh source and target columns models
+        updateColumnsLists();
     }
 }
