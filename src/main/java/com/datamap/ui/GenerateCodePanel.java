@@ -137,6 +137,8 @@ public class GenerateCodePanel extends JPanel {
         String classname = null;
         for (TargetTable targetTable : wizard.getTargetTables().values()) {
             classname = targetTable.getTable().getName();
+            //classname 首字母大写
+            classname = classname.substring(0, 1).toUpperCase() + classname.substring(1);
             break;
         }
 // 设置默认文件名

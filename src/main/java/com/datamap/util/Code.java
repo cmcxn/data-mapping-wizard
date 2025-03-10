@@ -20,6 +20,8 @@ public class Code {
         String classname = null;
         for (TargetTable targetTable : targetTables.values()) {
             classname = targetTable.getTable().getName();
+            //classname 首字母大写
+            classname = classname.substring(0, 1).toUpperCase() + classname.substring(1);
             break;
         }
 
@@ -44,7 +46,7 @@ public class Code {
 
         code.append(before);
         // Define set
-        code.append("Set<Object> set = new LinkedHashSet<>();\n\n");
+        code.append("Set<ComputationalLogic> set = new LinkedHashSet<>();\n\n");
 
         // Define source tables
         for (SourceTable sourceTable : sourceTables.values()) {
