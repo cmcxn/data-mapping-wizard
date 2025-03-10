@@ -128,7 +128,6 @@ public class GenerateCodePanel extends JPanel {
                 "Code copied to clipboard successfully!",
                 "Clipboard", JOptionPane.INFORMATION_MESSAGE);
     }
-
     private void saveCodeToFile() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Save Code");
@@ -137,25 +136,27 @@ public class GenerateCodePanel extends JPanel {
         String classname = null;
         for (TargetTable targetTable : wizard.getTargetTables().values()) {
             classname = targetTable.getTable().getName();
-            //classname 首字母大写
+            // 首字母大写
             classname = classname.substring(0, 1).toUpperCase() + classname.substring(1);
             break;
         }
-// 设置默认文件名
-        fileChooser.setSelectedFile(new File(classname+".java"));
+
+        // 设置默认文件名
+        fileChooser.setSelectedFile(new File(classname + ".java"));
         int userSelection = fileChooser.showSaveDialog(this);
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
 
-            // Add .java extension if not present
+            // 如果文件名没有以 .java 结尾，则添加
             if (!fileToSave.getName().toLowerCase().endsWith(".java")) {
                 fileToSave = new File(fileToSave.getAbsolutePath() + ".java");
             }
 
             try {
+                // 使用 UTF-8 编码保存文件
                 java.nio.file.Files.write(fileToSave.toPath(),
-                        codeArea.getText().getBytes());
+                        codeArea.getText().getBytes(java.nio.charset.StandardCharsets.UTF_8));
                 JOptionPane.showMessageDialog(this,
                         "Code saved successfully to " + fileToSave.getName(),
                         "Save Successful", JOptionPane.INFORMATION_MESSAGE);
@@ -166,6 +167,7 @@ public class GenerateCodePanel extends JPanel {
             }
         }
     }
+
 
     public void saveConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
