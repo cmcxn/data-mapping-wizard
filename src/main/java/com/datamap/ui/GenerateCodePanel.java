@@ -134,6 +134,13 @@ public class GenerateCodePanel extends JPanel {
         fileChooser.setDialogTitle("Save Code");
         fileChooser.setFileFilter(new FileNameExtensionFilter("Java Files", "java"));
 
+        String classname = null;
+        for (TargetTable targetTable : wizard.getTargetTables().values()) {
+            classname = targetTable.getTable().getName();
+            break;
+        }
+// 设置默认文件名
+        fileChooser.setSelectedFile(new File(classname+".java"));
         int userSelection = fileChooser.showSaveDialog(this);
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {

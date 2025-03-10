@@ -17,9 +17,34 @@ public class Code {
                                       List<Mapping> mappings
     ) {
         StringBuilder code = new StringBuilder();
+        String classname = null;
+        for (TargetTable targetTable : targetTables.values()) {
+            classname = targetTable.getTable().getName();
+            break;
+        }
 
+        String before ="package Util.impl;\n" +
+                "\n" +
+                "import Util.ComputationalLogicSet;\n" +
+                "import core.mapper.*;\n" +
+                "import core.metadata.SourceColumn;\n" +
+                "import core.metadata.SourceTable;\n" +
+                "import core.metadata.TargetColumn;\n" +
+                "import core.metadata.TargetTable;\n" +
+                "\n" +
+                "import java.util.LinkedHashSet;\n" +
+                "import java.util.Set;\n" +
+                "\n" +
+                "import static Util.PgSink.setSource;\n" +
+                "import static Util.PgSink.setTarget;\n" +
+                "\n" +
+                "public class "+classname+" implements ComputationalLogicSet {\n" +
+                "    @Override\n" +
+                "    public Set<ComputationalLogic> getComputationalLogicSet() {\n" ;
+
+        code.append(before);
         // Define set
-        code.append("Set<Mapping> set = new HashSet<>();\n\n");
+        code.append("Set<Object> set = new LinkedHashSet<>();\n\n");
 
         // Define source tables
         for (SourceTable sourceTable : sourceTables.values()) {
@@ -29,6 +54,7 @@ public class Code {
 
             code.append(");\n");
         }
+
 
         // Define target tables
         for (TargetTable targetTable : targetTables.values()) {
@@ -123,6 +149,10 @@ public class Code {
             }
         }
 
+        String end = "        return set;\n" +
+                "    }\n" +
+                "}\n";
+        code.append(end);
         return code.toString();
     }
 }
