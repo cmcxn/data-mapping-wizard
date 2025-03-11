@@ -15,6 +15,7 @@ import java.awt.event.ItemListener;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 
 public class NoneMappingPanel extends JPanel {
     private DataMapWizard wizard;
@@ -75,6 +76,14 @@ public class NoneMappingPanel extends JPanel {
             }
         });
 
+        JButton addOneByOneButton = new JButton("Add One by One");
+        addOneByOneButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addOneByOneMappings();
+            }
+        });
+
         JButton deleteMappingButton = new JButton("Delete Direct Mapping");
         deleteMappingButton.addActionListener(new ActionListener() {
             @Override
@@ -84,6 +93,7 @@ public class NoneMappingPanel extends JPanel {
         });
 
         buttonPanel.add(addMappingButton);
+        buttonPanel.add(addOneByOneButton);
         buttonPanel.add(deleteMappingButton);
 
         contentPanel.add(inputPanel, BorderLayout.NORTH);
@@ -139,6 +149,62 @@ public class NoneMappingPanel extends JPanel {
                 wizard.addNoneMapping(targetParts[0], targetParts[1], sourceParts[0], sourceParts[1]);
                 mappingsModel.addElement(targetColumnKey + " <- " + sourceColumnKey);
             }
+        }
+    }
+
+    /**
+     * Add mappings between target columns and source columns with the same name
+     */
+    private void addOneByOneMappings() {
+        Map<String, TargetColumn> targetColumns = wizard.getTargetColumns();
+        Map<String, SourceColumn> sourceColumns = wizard.getSourceColumns();
+
+        // Group target columns by table
+        Map<String, List<String>> targetColumnsByTable = new HashMap<>();
+        for (String targetColumnKey : targetColumns.keySet()) {
+            String[] parts = targetColumnKey.split("\\.");
+            if (parts.length == 2) {
+                String tableName = parts[0];
+                String columnName = parts[1];
+
+                if (!targetColumnsByTable.containsKey(tableName)) {
+                    targetColumnsByTable.put(tableName, new ArrayList<>());
+                }
+                targetColumnsByTable.get(tableName).add(columnName);
+            }
+        }
+
+        int mappingsCreated = 0;
+
+        // For each target table, find corresponding source columns
+        for (String targetTableName : targetColumnsByTable.keySet()) {
+            TargetTable targetTable = wizard.getTargetTables().get(targetTableName);
+            if (targetTable != null) {
+                String sourceTableName = targetTable.getSourceTable().getName();
+
+                // For each target column, look for matching source column
+                for (String targetColumnName : targetColumnsByTable.get(targetTableName)) {
+                    String sourceColumnKey = sourceTableName + "." + targetColumnName;
+                    SourceColumn sourceColumn = sourceColumns.get(sourceColumnKey);
+
+                    if (sourceColumn != null) {
+                        // We found a match, create the mapping
+                        wizard.addNoneMapping(targetTableName, targetColumnName, sourceTableName, targetColumnName);
+                        mappingsModel.addElement(targetTableName + "." + targetColumnName + " <- " + sourceColumnKey);
+                        mappingsCreated++;
+                    }
+                }
+            }
+        }
+
+        if (mappingsCreated > 0) {
+            JOptionPane.showMessageDialog(this,
+                    mappingsCreated + " one-to-one mappings were created.",
+                    "One-to-One Mapping", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "No matching columns found for one-to-one mapping.",
+                    "One-to-One Mapping", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
