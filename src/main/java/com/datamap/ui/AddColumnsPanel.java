@@ -153,6 +153,8 @@ public class AddColumnsPanel extends JPanel {
         targetColumnCombo = new AutoCompleteComboBox();
         targetInputPanel.add(targetColumnCombo);
 
+        JPanel targetButtonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
         JButton addTargetColumnButton = new JButton("Add Target Column");
         addTargetColumnButton.addActionListener(new ActionListener() {
             @Override
@@ -169,6 +171,19 @@ public class AddColumnsPanel extends JPanel {
             }
         });
 
+        // Add new button to copy target columns to source table
+        JButton addToLeftButton = new JButton("Add To Left");
+        addToLeftButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                copyTargetColumnsToSource();
+            }
+        });
+
+        targetButtonsPanel.add(addTargetColumnButton);
+        targetButtonsPanel.add(deleteTargetColumnButton);
+        targetButtonsPanel.add(addToLeftButton);
+
         targetColumnsList = new JList<>(targetColumnsModel);
         // 允许多选
         targetColumnsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -177,8 +192,7 @@ public class AddColumnsPanel extends JPanel {
         JPanel targetActionsPanel = new JPanel(new GridLayout(2, 1, 5, 5));
 
         JPanel targetMainActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        targetMainActionsPanel.add(addTargetColumnButton);
-        targetMainActionsPanel.add(deleteTargetColumnButton);
+        targetMainActionsPanel.add(targetButtonsPanel);
 
         // Add target column selection buttons
         JPanel targetSelectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -227,6 +241,64 @@ public class AddColumnsPanel extends JPanel {
         instructionLabel.setFont(new Font(instructionLabel.getFont().getName(), Font.BOLD, 14));
         add(instructionLabel, BorderLayout.NORTH);
     }
+
+    /**
+     * Copies all columns from the currently selected target table to the source table
+     * by replacing the table name with the currently selected source table
+     */
+    private void copyTargetColumnsToSource() {
+        String targetTableName = (String) targetTableCombo.getSelectedItem();
+        String sourceTableOrViewName = (String) sourceTableCombo.getSelectedItem();
+
+        if (targetTableName == null || sourceTableOrViewName == null || availableTargetColumns.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please select both source and target tables with available columns.",
+                    "Copy Failed", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Get clean source table name for data operations
+        String cleanSourceTableName = DatabaseConnectionManager.getCleanName(sourceTableOrViewName);
+
+        int addedCount = 0;
+
+        // Copy all available target columns to source with the source table name
+        for (String columnName : availableTargetColumns) {
+            // Check if column already exists in source
+            boolean exists = false;
+            for (int i = 0; i < sourceColumnsModel.size(); i++) {
+                String existingKey = sourceColumnsModel.getElementAt(i);
+                String[] parts = existingKey.split("\\.");
+                if (parts.length == 2) {
+                    String existingCleanTableName = DatabaseConnectionManager.getCleanName(parts[0]);
+                    String existingColumnName = parts[1];
+                    if (existingCleanTableName.equals(cleanSourceTableName) && existingColumnName.equals(columnName)) {
+                        exists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!exists) {
+                // Add this column to the source table with the source table name
+                wizard.addSourceColumn(cleanSourceTableName, columnName);
+                // Use original name format (with or without VIEW: prefix) in UI
+                sourceColumnsModel.addElement(sourceTableOrViewName + "." + columnName);
+                addedCount++;
+            }
+        }
+
+        if (addedCount > 0) {
+            JOptionPane.showMessageDialog(this,
+                    addedCount + " columns copied from " + targetTableName + " to " + sourceTableOrViewName,
+                    "Columns Copied", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "No new columns to copy. All target columns already exist in source table.",
+                    "Copy Result", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
     private void updateSourceColumns() {
         String tableOrViewName = (String) sourceTableCombo.getSelectedItem();
         if (tableOrViewName == null) return;
