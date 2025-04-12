@@ -409,4 +409,20 @@ public class AddTablesPanel extends JPanel {
         }
         sourceTableForTargetCombo.setAutoCompleteItems(sourceTables);
     }
+    /**
+     * Performs a complete refresh of the UI components
+     */
+    public void fullRefresh() {
+        // Clear all models
+        sourceTablesModel.clear();
+        targetTablesModel.clear();
+
+        // Clear combo boxes
+        sourceTableForTargetCombo.removeAllItems();
+        sourceTableComboBox.removeAllItems();
+        targetTableComboBox.removeAllItems();
+
+        // Refresh data sources
+        refreshDataSources();
+    }
 }

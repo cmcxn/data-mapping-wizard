@@ -190,7 +190,7 @@ public class DataMapWizard extends JFrame {
 
                     // Navigate directly to Step 1 (addTables)
                     nextPanel = "addTables";
-
+                    addTablesPanel.fullRefresh();
                     // Refresh the tables panel with existing data sources
                     addTablesPanel.refreshDataSources();
                 }
