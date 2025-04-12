@@ -172,7 +172,18 @@ public class GenerateCodePanel extends JPanel {
     public void saveConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Save Configuration");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("JSON Files", "json"));
+
+        String classname = null;
+        for (TargetTable targetTable : wizard.getTargetTables().values()) {
+            classname = targetTable.getTable().getName();
+            // 首字母大写
+            classname = classname.substring(0, 1).toUpperCase() + classname.substring(1);
+            break;
+        }
+
+        // 设置默认文件名
+        fileChooser.setSelectedFile(new File(classname + ".json"));
+//        fileChooser.setFileFilter(new FileNameExtensionFilter("JSON Files", "json"));
 
         int userSelection = fileChooser.showSaveDialog(this);
 
