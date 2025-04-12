@@ -139,7 +139,7 @@ public class DataMapWizard extends JFrame {
         // Initially disable previous button on first panel
         prevButton.setEnabled(false);
     }
-
+    // Change in navigateNext() method - around line 270
     public void navigateNext() {
         String nextPanel = null;
 
@@ -173,6 +173,27 @@ public class DataMapWizard extends JFrame {
             case "externalConnection":
                 nextPanel = "generateCode";
                 generateCodePanel.updateCode();
+                break;
+            case "generateCode":
+                // Show confirmation dialog
+                int response = JOptionPane.showConfirmDialog(
+                        this,
+                        "Are you really to clean?",
+                        "Confirmation",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+
+                if (response == JOptionPane.YES_OPTION) {
+                    // Reset all data except database connections
+                    resetData();
+
+                    // Navigate directly to Step 1 (addTables)
+                    nextPanel = "addTables";
+
+                    // Refresh the tables panel with existing data sources
+                    addTablesPanel.refreshDataSources();
+                }
                 break;
         }
 
@@ -222,6 +243,7 @@ public class DataMapWizard extends JFrame {
         }
     }
 
+    // Change in updateButtonState() method - around line 260
     private void updateButtonState() {
         // Disable previous button on first panel
         prevButton.setEnabled(!currentPanel.equals("databaseConfig"));
@@ -230,7 +252,7 @@ public class DataMapWizard extends JFrame {
         if (currentPanel.equals("externalConnection")) {
             nextButton.setText("Generate Code");
         } else if (currentPanel.equals("generateCode")) {
-            nextButton.setText("Finish");
+            nextButton.setText("Clear"); // Changed from "Finish" to "Clear"
         } else {
             nextButton.setText("Next");
         }
