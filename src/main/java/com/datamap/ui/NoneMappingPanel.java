@@ -5,6 +5,9 @@ import com.datamap.model.TargetColumn;
 import com.datamap.model.TargetTable;
 import com.datamap.model.mapping.Mapping;
 import com.datamap.model.mapping.None;
+import com.datamap.util.SortedFuzzyJComboBox;
+import org.jdesktop.swingx.JXComboBox;
+import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -41,7 +44,12 @@ public class NoneMappingPanel extends JPanel {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new JComboBox<>();
+//        targetColumnCombo = new JComboBox<>();
+
+        targetColumnCombo = new SortedFuzzyJComboBox();
+        targetColumnCombo.setEditable(true);
+        // 使用AutoCompleteDecorator添加自动完成功能
+        AutoCompleteDecorator.decorate(targetColumnCombo);
         targetColumnCombo.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
@@ -53,7 +61,7 @@ public class NoneMappingPanel extends JPanel {
         inputPanel.add(targetColumnCombo);
 
         inputPanel.add(new JLabel("Source Column:"));
-        sourceColumnCombo = new JComboBox<>();
+        sourceColumnCombo = new SortedFuzzyJComboBox();
         inputPanel.add(sourceColumnCombo);
 
         // Mappings panel

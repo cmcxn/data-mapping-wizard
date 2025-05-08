@@ -3,6 +3,7 @@ package com.datamap.ui;
 import com.datamap.model.SourceColumn;
 import com.datamap.model.TargetColumn;
 import com.datamap.model.mapping.LeftJoin;
+import com.datamap.util.SortedFuzzyJComboBox;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -47,7 +48,7 @@ public class ExternalConnectionPanel extends JPanel {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new JComboBox<>();
+        targetColumnCombo = new SortedFuzzyJComboBox();
         inputPanel.add(targetColumnCombo);
 
         inputPanel.add(new JLabel("Final Select Table:"));
@@ -55,7 +56,7 @@ public class ExternalConnectionPanel extends JPanel {
         inputPanel.add(finalSelectTableCombo);
 
         inputPanel.add(new JLabel("Final Select Column:"));
-        finalSelectColumnCombo = new JComboBox<>();
+        finalSelectColumnCombo = new SortedFuzzyJComboBox();
         inputPanel.add(finalSelectColumnCombo);
 
         inputPanel.add(new JLabel("Where Select Table:"));
@@ -63,7 +64,7 @@ public class ExternalConnectionPanel extends JPanel {
         inputPanel.add(whereSelectTableCombo);
 
         inputPanel.add(new JLabel("Where ID Column:"));
-        whereIdColumnCombo = new JComboBox<>();
+        whereIdColumnCombo = new SortedFuzzyJComboBox();
         inputPanel.add(whereIdColumnCombo);
 
         inputPanel.add(new JLabel("Source Table:"));
@@ -71,7 +72,7 @@ public class ExternalConnectionPanel extends JPanel {
         inputPanel.add(sourceTableCombo);
 
         inputPanel.add(new JLabel("Source ID Column:"));
-        sourceIdColumnCombo = new JComboBox<>();
+        sourceIdColumnCombo = new SortedFuzzyJComboBox();
         inputPanel.add(sourceIdColumnCombo);
 
         // LEFT JOIN panel
