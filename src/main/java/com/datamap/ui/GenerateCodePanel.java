@@ -83,27 +83,11 @@ public class GenerateCodePanel extends JPanel {
             }
         });
 
-        JButton saveConfigButton = new JButton("Save Configuration");
-        saveConfigButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                saveConfiguration();
-            }
-        });
 
-        JButton loadConfigButton = new JButton("Load Configuration");
-        loadConfigButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                loadConfiguration();
-            }
-        });
 
         buttonPanel.add(regenerateButton);
         buttonPanel.add(copyButton);
         buttonPanel.add(saveButton);
-        buttonPanel.add(saveConfigButton);
-        buttonPanel.add(loadConfigButton);
 
         contentPanel.add(scrollPane, BorderLayout.CENTER);
         contentPanel.add(buttonPanel, BorderLayout.SOUTH);
