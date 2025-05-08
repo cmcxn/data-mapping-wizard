@@ -1,6 +1,7 @@
 package com.datamap.ui;
 
 import com.datamap.model.DataSource;
+import com.datamap.util.ConfigManager;
 import com.datamap.util.DataSourceConfig;
 import com.datamap.util.DatabaseConnectionManager;
 
@@ -139,25 +140,32 @@ public class DatabaseConfigPanel extends JPanel {
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
         splitPane.setDividerLocation(250);
         contentPanel.add(splitPane, BorderLayout.CENTER);
-        
-        // File action panel
-        JPanel fileActionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton saveConfigButton = new JButton("Save to File");
-        saveConfigButton.addActionListener(e -> saveToFile());
-        
-        JButton loadConfigButton = new JButton("Load from File");
-        loadConfigButton.addActionListener(e -> loadFromFile());
-        
-        fileActionPanel.add(saveConfigButton);
-        fileActionPanel.add(loadConfigButton);
-        contentPanel.add(fileActionPanel, BorderLayout.SOUTH);
-        
+
         // Main panel layout
         add(contentPanel, BorderLayout.CENTER);
         
         JLabel instructionLabel = new JLabel("Step 0: Setup Database Connections");
         instructionLabel.setFont(new Font(instructionLabel.getFont().getName(), Font.BOLD, 14));
         add(instructionLabel, BorderLayout.NORTH);
+
+        File file = new File(ConfigManager.getConfigPath());
+        if(file.exists()){
+            List<DataSource> loadedSources = null;
+            try {
+                loadedSources = DataSourceConfig.loadFromFile(file);
+                dataSources = new ArrayList<>(loadedSources);
+                updateDataSourcesModel();
+                if (!dataSources.isEmpty()) {
+                    dataSourcesList.setSelectedIndex(0);
+                } else {
+                    clearForm();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+        }
+
         
         // If we have data sources, select the first one
         if (!dataSources.isEmpty()) {
@@ -220,7 +228,7 @@ public class DatabaseConfigPanel extends JPanel {
         }
     }
     
-    private void saveCurrentDataSource() {
+    private void saveCurrentDataSource()   {
         int index = dataSourcesList.getSelectedIndex();
         if (index >= 0 && index < dataSources.size()) {
             DataSource ds = dataSources.get(index);
@@ -235,6 +243,11 @@ public class DatabaseConfigPanel extends JPanel {
             
             updateDataSourcesModel();
             dataSourcesList.setSelectedIndex(index);
+            try {
+                DataSourceConfig.saveToFile(new File(ConfigManager.getConfigPath()), dataSources);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             JOptionPane.showMessageDialog(this, "Data source saved", "Success", JOptionPane.INFORMATION_MESSAGE);
         }
     }
@@ -286,70 +299,11 @@ public class DatabaseConfigPanel extends JPanel {
             JOptionPane.showMessageDialog(this, 
                 "SQL Exception: " + ex.getMessage(), 
                 "Test Connection", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
-    
-    private void saveToFile() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Save Data Sources Configuration");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("JSON Files (*.json)", "json"));
 
-        int userSelection = fileChooser.showSaveDialog(this);
-
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File fileToSave = fileChooser.getSelectedFile();
-            // Add .json extension if not present
-            if (!fileToSave.getName().toLowerCase().endsWith(".json")) {
-                fileToSave = new File(fileToSave.getAbsolutePath() + ".json");
-            }
-
-            try {
-                DataSourceConfig.saveToFile(fileToSave, dataSources);
-                JOptionPane.showMessageDialog(this,
-                        "Data sources saved to " + fileToSave.getName(),
-                        "Success", JOptionPane.INFORMATION_MESSAGE);
-            } catch (IOException e) {
-                JOptionPane.showMessageDialog(this,
-                        "Error saving data sources: " + e.getMessage(),
-                        "Error", JOptionPane.ERROR_MESSAGE);
-                e.printStackTrace();
-            }
-        }
-    }
-    
-    private void loadFromFile() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Load Data Sources Configuration");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("JSON Files (*.json)", "json"));
-
-        int userSelection = fileChooser.showOpenDialog(this);
-
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File fileToLoad = fileChooser.getSelectedFile();
-
-            try {
-                List<DataSource> loadedSources = DataSourceConfig.loadFromFile(fileToLoad);
-                dataSources = new ArrayList<>(loadedSources);
-                updateDataSourcesModel();
-                
-                if (!dataSources.isEmpty()) {
-                    dataSourcesList.setSelectedIndex(0);
-                } else {
-                    clearForm();
-                }
-                
-                JOptionPane.showMessageDialog(this,
-                        "Data sources loaded from " + fileToLoad.getName(),
-                        "Success", JOptionPane.INFORMATION_MESSAGE);
-            } catch (IOException e) {
-                JOptionPane.showMessageDialog(this,
-                        "Error loading data sources: " + e.getMessage(),
-                        "Error", JOptionPane.ERROR_MESSAGE);
-                e.printStackTrace();
-            }
-        }
-    }
-    
     /**
      * Returns the currently configured data sources
      * 
