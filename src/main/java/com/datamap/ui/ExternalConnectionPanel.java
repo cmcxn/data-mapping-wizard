@@ -10,6 +10,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -122,8 +123,16 @@ public class ExternalConnectionPanel extends JPanel {
                 deleteMapping();
             }
         });
-
+// 在buttonPanel部分添加
+        JButton addOneByOneButton = new JButton("Add One by One");
+        addOneByOneButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addOneByOneMappings();
+            }
+        });
         buttonPanel.add(addMappingButton);
+        buttonPanel.add(addOneByOneButton); // 新增按钮
         buttonPanel.add(deleteMappingButton);
 
         // Main content assembly
@@ -163,6 +172,136 @@ public class ExternalConnectionPanel extends JPanel {
             }
         });
     }
+/**
+ * 添加Final Select Table下的列与Target Column之间的同名映射
+ */
+private void addOneByOneMappings() {
+    // 获取当前选择的值
+    String finalSelectTableName = (String) finalSelectTableCombo.getSelectedItem();
+    String whereSelectTableName = (String) whereSelectTableCombo.getSelectedItem();
+    String whereIdColumnName = (String) whereIdColumnCombo.getSelectedItem();
+    String sourceTableName = (String) sourceTableCombo.getSelectedItem();
+    String sourceIdColumnName = (String) sourceIdColumnCombo.getSelectedItem();
+
+    // 检查必要字段是否已选择
+    if (finalSelectTableName == null || whereSelectTableName == null || whereIdColumnName == null ||
+            sourceTableName == null || sourceIdColumnName == null) {
+        JOptionPane.showMessageDialog(this,
+                "请选择所有必要字段(Final Select Table, Where Select Table, Where ID Column, Source Table, Source ID Column)",
+                "缺少字段", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    // 获取Final Select Table下的所有列
+    List<String> finalSelectColumnNames = new ArrayList<>();
+    for (Map.Entry<String, SourceColumn> entry : wizard.getSourceColumns().entrySet()) {
+        if (entry.getKey().startsWith(finalSelectTableName + ".")) {
+            String columnName = entry.getKey().substring(finalSelectTableName.length() + 1);
+            finalSelectColumnNames.add(columnName);
+        }
+    }
+
+    // 获取Target Columns并按表名分组
+    Map<String, List<String>> targetColumnsByTable = new HashMap<>();
+    for (String targetColumnKey : wizard.getTargetColumns().keySet()) {
+        String[] parts = targetColumnKey.split("\\.");
+        if (parts.length == 2) {
+            String tableName = parts[0];
+            String columnName = parts[1];
+
+            if (!targetColumnsByTable.containsKey(tableName)) {
+                targetColumnsByTable.put(tableName, new ArrayList<>());
+            }
+            targetColumnsByTable.get(tableName).add(columnName);
+        }
+    }
+
+    int mappingsCreated = 0;
+
+    // 为每个目标表中的列查找匹配项
+    for (String targetTableName : targetColumnsByTable.keySet()) {
+        for (String targetColumnName : targetColumnsByTable.get(targetTableName)) {
+            if (finalSelectColumnNames.contains(targetColumnName)) {
+                // 找到匹配项，创建映射
+                int mappingIndex = wizard.addExternalConnectionMapping(
+                        targetTableName, targetColumnName,
+                        finalSelectTableName, targetColumnName,
+                        whereSelectTableName, whereIdColumnName,
+                        sourceTableName, sourceIdColumnName);
+
+                // 添加所有LEFT JOIN关系
+                for (JoinRow joinRow : joinRows) {
+                    String leftTableName = (String) joinRow.getLeftTableCombo().getSelectedItem();
+                    String leftColumnName = (String) joinRow.getLeftColumnCombo().getSelectedItem();
+                    String rightTableName = (String) joinRow.getRightTableCombo().getSelectedItem();
+                    String rightColumnName = (String) joinRow.getRightColumnCombo().getSelectedItem();
+
+                    if (leftTableName != null && leftColumnName != null &&
+                            rightTableName != null && rightColumnName != null) {
+                        wizard.addLeftJoinToExternalConnection(mappingIndex, leftTableName, leftColumnName,
+                                rightTableName, rightColumnName);
+                    }
+                }
+
+                // 构建映射显示字符串
+                StringBuilder mappingDisplay = new StringBuilder();
+                mappingDisplay.append(targetTableName)
+                        .append(".")
+                        .append(targetColumnName)
+                        .append(" <- ")
+                        .append(finalSelectTableName)
+                        .append(".")
+                        .append(targetColumnName)
+                        .append(" (Where ")
+                        .append(whereSelectTableName)
+                        .append(".")
+                        .append(whereIdColumnName)
+                        .append(" = ")
+                        .append(sourceTableName)
+                        .append(".")
+                        .append(sourceIdColumnName)
+                        .append(")");
+
+                // 添加LEFT JOIN信息（如果有）
+                if (!joinRows.isEmpty()) {
+                    mappingDisplay.append(" with LEFT JOINs: ");
+                    for (int i = 0; i < joinRows.size(); i++) {
+                        JoinRow joinRow = joinRows.get(i);
+                        String leftTableName = (String) joinRow.getLeftTableCombo().getSelectedItem();
+                        String leftColumnName = (String) joinRow.getLeftColumnCombo().getSelectedItem();
+                        String rightTableName = (String) joinRow.getRightTableCombo().getSelectedItem();
+                        String rightColumnName = (String) joinRow.getRightColumnCombo().getSelectedItem();
+
+                        if (i > 0) {
+                            mappingDisplay.append(", ");
+                        }
+                        mappingDisplay.append(leftTableName)
+                                .append(".")
+                                .append(leftColumnName)
+                                .append(" = ")
+                                .append(rightTableName)
+                                .append(".")
+                                .append(rightColumnName);
+                    }
+                }
+
+                mappingsModel.addElement(mappingDisplay.toString());
+                mappingsCreated++;
+            }
+        }
+    }
+
+    // 显示结果信息
+    if (mappingsCreated > 0) {
+        JOptionPane.showMessageDialog(this,
+                "已创建 " + mappingsCreated + " 个一对一映射",
+                "一对一映射", JOptionPane.INFORMATION_MESSAGE);
+    } else {
+        JOptionPane.showMessageDialog(this,
+                "未找到匹配的列名",
+                "一对一映射", JOptionPane.INFORMATION_MESSAGE);
+    }
+}
 
     private void addJoinRow() {
         JoinRow joinRow = new JoinRow();
