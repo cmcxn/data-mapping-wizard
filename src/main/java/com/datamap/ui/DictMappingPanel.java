@@ -5,7 +5,6 @@ import com.datamap.model.TargetColumn;
 import com.datamap.model.TargetTable;
 import com.datamap.model.mapping.Dict;
 import com.datamap.model.mapping.Mapping;
-import com.datamap.util.SortedFuzzyJComboBox;
 
 import javax.swing.*;
 import java.awt.*;
@@ -42,7 +41,7 @@ public class DictMappingPanel extends JPanel {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new SortedFuzzyJComboBox();
+        targetColumnCombo = new AutoCompleteComboBox();
         targetColumnCombo.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
@@ -58,7 +57,7 @@ public class DictMappingPanel extends JPanel {
         inputPanel.add(dictTypeField);
 
         inputPanel.add(new JLabel("Source Column:"));
-        sourceColumnCombo = new SortedFuzzyJComboBox();
+        sourceColumnCombo = new AutoCompleteComboBox();
         inputPanel.add(sourceColumnCombo);
 
         // Mappings panel

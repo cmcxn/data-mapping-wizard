@@ -3,7 +3,6 @@ package com.datamap.ui;
 import com.datamap.model.TargetColumn;
 import com.datamap.model.mapping.Constant;
 import com.datamap.model.mapping.Mapping;
-import com.datamap.util.SortedFuzzyJComboBox;
 
 import javax.swing.*;
 import java.awt.*;
@@ -37,7 +36,7 @@ public class ConstantMappingPanel extends JPanel {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new SortedFuzzyJComboBox();
+        targetColumnCombo = new AutoCompleteComboBox();
         inputPanel.add(targetColumnCombo);
 
         inputPanel.add(new JLabel("Constant Value:"));
