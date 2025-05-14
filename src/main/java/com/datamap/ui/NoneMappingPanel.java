@@ -5,7 +5,6 @@ import com.datamap.model.TargetColumn;
 import com.datamap.model.TargetTable;
 import com.datamap.model.mapping.Mapping;
 import com.datamap.model.mapping.None;
-import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -46,8 +45,6 @@ public class NoneMappingPanel extends JPanel {
 
         targetColumnCombo = new AutoCompleteComboBox();
         targetColumnCombo.setEditable(true);
-        // 使用AutoCompleteDecorator添加自动完成功能
-//        AutoCompleteDecorator.decorate(targetColumnCombo);
         targetColumnCombo.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
