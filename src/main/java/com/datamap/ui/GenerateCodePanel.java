@@ -23,6 +23,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -132,15 +133,24 @@ public class GenerateCodePanel extends JPanel {
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
 
+
+
             // 如果文件名没有以 .java 结尾，则添加
             if (!fileToSave.getName().toLowerCase().endsWith(".java")) {
                 fileToSave = new File(fileToSave.getAbsolutePath() + ".java");
             }
+            //获得最终的文件名
+            String filename = fileToSave.getName().replaceAll(".java", "");
 
             try {
                 // 使用 UTF-8 编码保存文件
+                String code = codeArea.getText();
+                if(!filename.equals(classname)){
+                    code = code.replaceAll(classname, filename);
+                }
+                byte[] bytes = code.getBytes(StandardCharsets.UTF_8);
                 java.nio.file.Files.write(fileToSave.toPath(),
-                        codeArea.getText().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        bytes);
                 JOptionPane.showMessageDialog(this,
                         "Code saved successfully to " + fileToSave.getName(),
                         "Save Successful", JOptionPane.INFORMATION_MESSAGE);
