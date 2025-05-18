@@ -47,31 +47,31 @@ public class ExternalConnectionPanel extends JPanel {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new JComboBox<>();
+        targetColumnCombo = new SortedJXComboBox<>();
         inputPanel.add(targetColumnCombo);
 
         inputPanel.add(new JLabel("Final Select Table:"));
-        finalSelectTableCombo = new JComboBox<>();
+        finalSelectTableCombo = new SortedJXComboBox<>();
         inputPanel.add(finalSelectTableCombo);
 
         inputPanel.add(new JLabel("Final Select Column:"));
-        finalSelectColumnCombo = new JComboBox<>();
+        finalSelectColumnCombo = new SortedJXComboBox<>();
         inputPanel.add(finalSelectColumnCombo);
 
         inputPanel.add(new JLabel("Where Select Table:"));
-        whereSelectTableCombo = new JComboBox<>();
+        whereSelectTableCombo = new SortedJXComboBox<>();
         inputPanel.add(whereSelectTableCombo);
 
         inputPanel.add(new JLabel("Where ID Column:"));
-        whereIdColumnCombo = new JComboBox<>();
+        whereIdColumnCombo = new SortedJXComboBox<>();
         inputPanel.add(whereIdColumnCombo);
 
         inputPanel.add(new JLabel("Source Table:"));
-        sourceTableCombo = new JComboBox<>();
+        sourceTableCombo = new SortedJXComboBox<>();
         inputPanel.add(sourceTableCombo);
 
         inputPanel.add(new JLabel("Source ID Column:"));
-        sourceIdColumnCombo = new JComboBox<>();
+        sourceIdColumnCombo = new SortedJXComboBox<>();
         inputPanel.add(sourceIdColumnCombo);
 
         // LEFT JOIN panel
@@ -522,10 +522,10 @@ private void addOneByOneMappings() {
         public JoinRow() {
             setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
 
-            leftTableCombo = new JComboBox<>();
-            leftColumnCombo = new JComboBox<>();
-            rightTableCombo = new JComboBox<>();
-            rightColumnCombo = new JComboBox<>();
+            leftTableCombo = new SortedJXComboBox<>();
+            leftColumnCombo = new SortedJXComboBox<>();
+            rightTableCombo = new SortedJXComboBox<>();
+            rightColumnCombo = new SortedJXComboBox<>();
             removeButton = new JButton("X");
 
             // Populate table combos with all source tables

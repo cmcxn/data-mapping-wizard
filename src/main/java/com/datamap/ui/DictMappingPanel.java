@@ -41,7 +41,7 @@ public class DictMappingPanel extends JPanel {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new JComboBox<>();
+        targetColumnCombo = new SortedJXComboBox<>();
         targetColumnCombo.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
@@ -57,7 +57,7 @@ public class DictMappingPanel extends JPanel {
         inputPanel.add(dictTypeField);
 
         inputPanel.add(new JLabel("Source Column:"));
-        sourceColumnCombo = new JComboBox<>();
+        sourceColumnCombo = new SortedJXComboBox<>();
         inputPanel.add(sourceColumnCombo);
 
         // Mappings panel

@@ -36,7 +36,7 @@ public class ConstantMappingPanel extends JPanel {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         inputPanel.add(new JLabel("Target Column:"));
-        targetColumnCombo = new JComboBox<>();
+        targetColumnCombo = new SortedJXComboBox<>();
         inputPanel.add(targetColumnCombo);
 
         inputPanel.add(new JLabel("Constant Value:"));
