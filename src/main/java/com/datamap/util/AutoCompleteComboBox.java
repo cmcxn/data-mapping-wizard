@@ -3,6 +3,7 @@ package com.datamap.util;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,7 +56,7 @@ public class AutoCompleteComboBox extends JComboBox<String> {
         textField.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (getItemCount() > 0) {
+                if (getItemCount() > 0 && isComponentReady()) {
                     hidePopup();
                 }
             }
@@ -68,9 +69,11 @@ public class AutoCompleteComboBox extends JComboBox<String> {
                 if (e.getStateChange() == ItemEvent.SELECTED && !isAutoCompleting) {
                     // User has selected an item from the dropdown
                     SwingUtilities.invokeLater(() -> {
-                        hidePopup();
-                        if (e.getItem() != null) {
-                            textField.setText(e.getItem().toString());
+                        if (isComponentReady()) {
+                            hidePopup();
+                            if (e.getItem() != null) {
+                                textField.setText(e.getItem().toString());
+                            }
                         }
                     });
                 }
@@ -81,11 +84,50 @@ public class AutoCompleteComboBox extends JComboBox<String> {
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (!isPopupVisible()) {
-                    showPopup();
+                if (!isPopupVisible() && isComponentReady()) {
+                    safeShowPopup();
                 }
             }
         });
+    }
+
+    /**
+     * Checks if the component is ready for popup operations
+     */
+    private boolean isComponentReady() {
+        return isDisplayable() && isShowing() && getParent() != null;
+    }
+
+    /**
+     * Safely shows the popup with error handling
+     */
+    private void safeShowPopup() {
+        if (!isComponentReady()) {
+            return;
+        }
+
+        try {
+            showPopup();
+        } catch (IllegalComponentStateException e) {
+            // Component not ready yet, ignore the popup request
+            System.err.println("AutoCompleteComboBox: Component not ready for popup display");
+        }
+    }
+
+    /**
+     * Safely hides the popup with error handling
+     */
+    private void safeHidePopup() {
+        if (!isComponentReady()) {
+            return;
+        }
+
+        try {
+            hidePopup();
+        } catch (IllegalComponentStateException e) {
+            // Component not ready yet, ignore the popup request
+            System.err.println("AutoCompleteComboBox: Component not ready for popup hiding");
+        }
     }
 
     /**
@@ -101,7 +143,9 @@ public class AutoCompleteComboBox extends JComboBox<String> {
             if (text.isEmpty()) {
                 // Reset to show all items
                 setModel(new DefaultComboBoxModel<>(allItems.toArray(new String[0])));
-                showPopup();
+                if (isComponentReady()) {
+                    safeShowPopup();
+                }
                 isAutoCompleting = false;
                 return;
             }
@@ -115,13 +159,15 @@ public class AutoCompleteComboBox extends JComboBox<String> {
             }
 
             if (filteredItems.isEmpty()) {
-                hidePopup();
+                safeHidePopup();
             } else {
                 // Update the model with filtered items
                 setModel(new DefaultComboBoxModel<>(filteredItems.toArray(new String[0])));
                 textField.setText(text);
                 textField.setCaretPosition(text.length());
-                showPopup();
+                if (isComponentReady()) {
+                    safeShowPopup();
+                }
             }
 
             isAutoCompleting = false;
