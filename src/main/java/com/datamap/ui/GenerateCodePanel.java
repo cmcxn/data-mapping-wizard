@@ -114,7 +114,18 @@ public class GenerateCodePanel extends JPanel {
     }
 
     private void saveCodeToFile() {
+        // 获取工作目录作为默认目录
+        String workingDir = ConfigManager.getCurrentWorkingDirectory();
         JFileChooser fileChooser = new JFileChooser();
+
+        // 如果工作目录存在且有效，设置为默认目录
+        if (workingDir != null && !workingDir.trim().isEmpty()) {
+            File workingDirFile = new File(workingDir);
+            if (workingDirFile.exists() && workingDirFile.isDirectory()) {
+                fileChooser.setCurrentDirectory(workingDirFile);
+            }
+        }
+
         fileChooser.setDialogTitle("Save Code");
         fileChooser.setFileFilter(new FileNameExtensionFilter("Java Files", "java"));
 
@@ -126,8 +137,14 @@ public class GenerateCodePanel extends JPanel {
             break;
         }
 
-        // 设置默认文件名
-        fileChooser.setSelectedFile(new File(classname + ".java"));
+        // 设置默认文件名（在工作目录下）
+        if (workingDir != null && !workingDir.trim().isEmpty()) {
+            File defaultFile = new File(workingDir, classname + ".java");
+            fileChooser.setSelectedFile(defaultFile);
+        } else {
+            fileChooser.setSelectedFile(new File(classname + ".java"));
+        }
+
         int userSelection = fileChooser.showSaveDialog(this);
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
