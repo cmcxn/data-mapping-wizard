@@ -1,6 +1,6 @@
 package com.datamap;
 
-import com.datamap.ui.SortedJXComboBox;
+import com.datamap.util.SortedJXComboBox;
 
 import javax.swing.*;
 import java.awt.*;

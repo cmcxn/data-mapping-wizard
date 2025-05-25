@@ -3,6 +3,7 @@ package com.datamap.ui;
 import com.datamap.model.TargetColumn;
 import com.datamap.model.mapping.Constant;
 import com.datamap.model.mapping.Mapping;
+import com.datamap.util.SortedJXComboBox;
 
 import javax.swing.*;
 import java.awt.*;

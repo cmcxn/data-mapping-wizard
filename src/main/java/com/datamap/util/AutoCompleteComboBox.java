@@ -1,4 +1,4 @@
-package com.datamap.ui;
+package com.datamap.util;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;

@@ -2,10 +2,9 @@ package com.datamap.ui;
 
 import com.datamap.model.SourceColumn;
 import com.datamap.model.TargetColumn;
-import com.datamap.model.mapping.LeftJoin;
+import com.datamap.util.SortedJXComboBox;
 
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;

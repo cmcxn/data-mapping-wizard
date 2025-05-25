@@ -1,6 +1,7 @@
 package com.datamap.ui;
 
 import com.datamap.model.DataSource;
+import com.datamap.util.AutoCompleteComboBox;
 import com.datamap.util.DatabaseConnectionManager;
 
 import javax.swing.*;

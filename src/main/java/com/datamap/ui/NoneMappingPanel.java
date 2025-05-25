@@ -5,7 +5,7 @@ import com.datamap.model.TargetColumn;
 import com.datamap.model.TargetTable;
 import com.datamap.model.mapping.Mapping;
 import com.datamap.model.mapping.None;
-import org.jdesktop.swingx.JXComboBox;
+import com.datamap.util.SortedJXComboBox;
 
 import javax.swing.*;
 import java.awt.*;

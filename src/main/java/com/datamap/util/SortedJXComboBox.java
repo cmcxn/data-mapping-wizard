@@ -1,4 +1,4 @@
-package com.datamap.ui;
+package com.datamap.util;
 
 import org.jdesktop.swingx.JXComboBox;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
