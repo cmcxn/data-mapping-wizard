@@ -13,6 +13,8 @@ import com.datamap.util.JsonConfig.Configuration;
 import com.datamap.util.JsonConfig.TableConfig;
 import com.datamap.util.JsonConfig.MappingConfig;
 import com.datamap.util.JsonConfig.LeftJoinConfig;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -32,7 +34,7 @@ import java.util.ArrayList;
 
 public class GenerateCodePanel extends JPanel {
     private DataMapWizard wizard;
-    private JTextArea codeArea;
+    private RSyntaxTextArea codeArea;
     private JButton copyButton;
     private JButton saveButton;
     private JButton regenerateButton;
@@ -48,10 +50,21 @@ public class GenerateCodePanel extends JPanel {
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Code area with syntax highlighting
-        codeArea = new JTextArea();
-        codeArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        // Create RSyntaxTextArea for SQL syntax highlighting
+        codeArea = new RSyntaxTextArea(20, 60);
         codeArea.setEditable(false);
+        codeArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JAVA);
+        codeArea.setCodeFoldingEnabled(true);
+        codeArea.setAntiAliasingEnabled(true);
+        codeArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        codeArea.setTabSize(2);
+
+        // Add SQL-specific enhancements
+        codeArea.setMarkOccurrences(true);
+        codeArea.setMarkOccurrencesDelay(500);
+        codeArea.setPaintTabLines(true);
+        codeArea.setAutoIndentEnabled(true);
+
         JScrollPane scrollPane = new JScrollPane(codeArea);
         scrollPane.setBorder(BorderFactory.createTitledBorder("Generated Code"));
 
