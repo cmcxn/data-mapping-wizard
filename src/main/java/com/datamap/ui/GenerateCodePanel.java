@@ -7,6 +7,7 @@ import com.datamap.model.TargetColumn;
 import com.datamap.model.TargetTable;
 import com.datamap.model.Table;
 import com.datamap.model.mapping.*;
+import com.datamap.util.ConfigManager;
 import com.datamap.util.JsonConfig;
 import com.datamap.util.JsonConfig.Configuration;
 import com.datamap.util.JsonConfig.TableConfig;
@@ -160,7 +161,18 @@ public class GenerateCodePanel extends JPanel {
     }
 
     public void saveConfiguration() {
+        // 获取工作目录作为默认目录
+        String workingDir = ConfigManager.getCurrentWorkingDirectory();
         JFileChooser fileChooser = new JFileChooser();
+
+        // 如果工作目录存在且有效，设置为默认目录
+        if (workingDir != null && !workingDir.trim().isEmpty()) {
+            File workingDirFile = new File(workingDir);
+            if (workingDirFile.exists() && workingDirFile.isDirectory()) {
+                fileChooser.setCurrentDirectory(workingDirFile);
+            }
+        }
+
         fileChooser.setDialogTitle("Save Configuration");
 
         String classname = null;
@@ -171,8 +183,13 @@ public class GenerateCodePanel extends JPanel {
             break;
         }
 
-        // 设置默认文件名
-        fileChooser.setSelectedFile(new File(classname + ".json"));
+        // 设置默认文件名（在工作目录下）
+        if (workingDir != null && !workingDir.trim().isEmpty()) {
+            File defaultFile = new File(workingDir, classname + ".json");
+            fileChooser.setSelectedFile(defaultFile);
+        } else {
+            fileChooser.setSelectedFile(new File(classname + ".json"));
+        }
 
         int userSelection = fileChooser.showSaveDialog(this);
 
@@ -230,9 +247,9 @@ public class GenerateCodePanel extends JPanel {
             Configuration config = JsonConfig.loadFromFile(fileToLoad);
             applyConfiguration(config);
 
-            JOptionPane.showMessageDialog(this,
-                    "Configuration loaded successfully from " + fileToLoad.getName(),
-                    "Load Successful", JOptionPane.INFORMATION_MESSAGE);
+//            JOptionPane.showMessageDialog(this,
+//                    "Configuration loaded successfully from " + fileToLoad.getName(),
+//                    "Load Successful", JOptionPane.INFORMATION_MESSAGE);
 
             // Refresh all UI panels to show the loaded data
             wizard.refreshAllPanelUIs();
