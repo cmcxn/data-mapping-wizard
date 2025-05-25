@@ -3,11 +3,14 @@ package com.datamap.ui;
 import com.datamap.model.*;
 import com.datamap.model.mapping.*;
 import com.datamap.util.Code;
+import com.datamap.util.ConfigManager;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +42,11 @@ public class DataMapWizard extends JFrame {
 
     // Current panel tracking
     private String currentPanel = "databaseConfig";
+
+
+    // 工作目录相关组件
+    private JLabel workingDirLabel;
+    private JButton selectWorkingDirButton;
 
     public DataMapWizard() {
         setTitle("Data Mapping Wizard");
@@ -76,7 +84,6 @@ public class DataMapWizard extends JFrame {
 
         cardLayout.show(wizardPanel, "databaseConfig");
     }
-
     private void initNavigationPanel() {
         JPanel navPanel = new JPanel(new BorderLayout());
 
@@ -106,6 +113,28 @@ public class DataMapWizard extends JFrame {
         leftButtonPanel.add(saveConfigButton);
         leftButtonPanel.add(loadConfigButton);
 
+        // 中间区域添加工作目录设置
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        centerPanel.add(new JLabel("工作目录:"));
+
+        workingDirLabel = new JLabel();
+        workingDirLabel.setForeground(Color.BLUE);
+        workingDirLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        selectWorkingDirButton = new JButton("文件夹设定");
+        selectWorkingDirButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                selectWorkingDirectory();
+            }
+        });
+
+        centerPanel.add(workingDirLabel);
+        centerPanel.add(selectWorkingDirButton);
+
+        // 初始化工作目录显示
+        updateWorkingDirectoryLabel();
+
         // Right-aligned panel for navigation buttons
         JPanel rightButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         prevButton = new JButton("Previous");
@@ -129,6 +158,7 @@ public class DataMapWizard extends JFrame {
         rightButtonPanel.add(nextButton);
 
         navPanel.add(leftButtonPanel, BorderLayout.WEST);
+        navPanel.add(centerPanel, BorderLayout.CENTER);
         navPanel.add(rightButtonPanel, BorderLayout.EAST);
 
         add(navPanel, BorderLayout.SOUTH);
@@ -136,6 +166,60 @@ public class DataMapWizard extends JFrame {
         // Initially disable previous button on first panel
         prevButton.setEnabled(false);
     }
+
+
+    /**
+     * 选择工作目录
+     */
+    private void selectWorkingDirectory() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fileChooser.setDialogTitle("选择工作目录");
+
+        // 设置当前工作目录作为默认选择
+        String currentWorkingDir = ConfigManager.getCurrentWorkingDirectory();
+        if (currentWorkingDir != null && !currentWorkingDir.trim().isEmpty()) {
+            fileChooser.setCurrentDirectory(new File(currentWorkingDir));
+        }
+
+        int result = fileChooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedDir = fileChooser.getSelectedFile();
+            String selectedPath = selectedDir.getAbsolutePath();
+
+            try {
+                // 保存到全局配置
+                ConfigManager.saveGlobalConfig(selectedPath);
+
+                // 更新显示
+                updateWorkingDirectoryLabel();
+
+                JOptionPane.showMessageDialog(this,
+                        "工作目录已设置为: " + selectedPath,
+                        "设置成功", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "保存工作目录设置失败: " + ex.getMessage(),
+                        "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * 更新工作目录标签显示
+     */
+    private void updateWorkingDirectoryLabel() {
+        String workingDir = ConfigManager.getCurrentWorkingDirectory();
+        if (workingDir != null && workingDir.length() > 50) {
+            // 如果路径太长，显示省略版本
+            workingDirLabel.setText("..." + workingDir.substring(workingDir.length() - 47));
+        } else {
+            workingDirLabel.setText(workingDir);
+        }
+        workingDirLabel.setToolTipText(workingDir); // 完整路径作为提示
+    }
+
+
     // Change in navigateNext() method - around line 270
     public void navigateNext() {
         String nextPanel = null;
