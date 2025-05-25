@@ -40,9 +40,11 @@ public class DataMapWizard extends JFrame {
     private ExternalConnectionPanel externalConnectionPanel;
     private GenerateCodePanel generateCodePanel;
 
+    // File tree panel
+    private FileTreePanel fileTreePanel;
+
     // Current panel tracking
     private String currentPanel = "databaseConfig";
-
 
     // 工作目录相关组件
     private JLabel workingDirLabel;
@@ -51,16 +53,15 @@ public class DataMapWizard extends JFrame {
     public DataMapWizard() {
         setTitle("Data Mapping Wizard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(800, 600);
+        setSize(1200, 800); // Increased width to accommodate the new layout
         setLocationRelativeTo(null);
 
         cardLayout = new CardLayout();
         wizardPanel = new JPanel(cardLayout);
 
         initPanels();
+        initMainLayout();
         initNavigationPanel();
-
-        add(wizardPanel, BorderLayout.CENTER);
     }
 
     private void initPanels() {
@@ -83,7 +84,34 @@ public class DataMapWizard extends JFrame {
         wizardPanel.add(generateCodePanel, "generateCode");
 
         cardLayout.show(wizardPanel, "databaseConfig");
+
+        // Initialize file tree panel
+        fileTreePanel = new FileTreePanel(this);
     }
+
+    private void initMainLayout() {
+        // Create main split pane with 3:7 ratio
+        JSplitPane mainSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+
+        // Left panel - File tree (15%)
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.setBorder(BorderFactory.createTitledBorder("Configuration Files"));
+        leftPanel.add(fileTreePanel, BorderLayout.CENTER);
+        leftPanel.setPreferredSize(new Dimension(150, 600));
+
+        // Right panel - Wizard (85%)
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.add(wizardPanel, BorderLayout.CENTER);
+        rightPanel.setPreferredSize(new Dimension(850, 600));
+
+        mainSplitPane.setLeftComponent(leftPanel);
+        mainSplitPane.setRightComponent(rightPanel);
+        mainSplitPane.setDividerLocation(150); // Set 1.5:8.5 ratio
+        mainSplitPane.setResizeWeight(0.15); // 15% for left panel
+
+        add(mainSplitPane, BorderLayout.CENTER);
+    }
+
     private void initNavigationPanel() {
         JPanel navPanel = new JPanel(new BorderLayout());
 
@@ -167,7 +195,6 @@ public class DataMapWizard extends JFrame {
         prevButton.setEnabled(false);
     }
 
-
     /**
      * 选择工作目录
      */
@@ -194,6 +221,9 @@ public class DataMapWizard extends JFrame {
                 // 更新显示
                 updateWorkingDirectoryLabel();
 
+                // Refresh file tree
+                fileTreePanel.refreshFileTree();
+
                 JOptionPane.showMessageDialog(this,
                         "工作目录已设置为: " + selectedPath,
                         "设置成功", JOptionPane.INFORMATION_MESSAGE);
@@ -218,7 +248,6 @@ public class DataMapWizard extends JFrame {
         }
         workingDirLabel.setToolTipText(workingDir); // 完整路径作为提示
     }
-
 
     // Change in navigateNext() method - around line 270
     public void navigateNext() {
@@ -339,6 +368,12 @@ public class DataMapWizard extends JFrame {
         }
     }
 
+    // Getter method for file tree panel access
+    public GenerateCodePanel getGenerateCodePanel() {
+        return generateCodePanel;
+    }
+
+    // ... [Keep all existing methods unchanged from this point] ...
 
     // New method with data source support
     public void addSourceTable(String name, DataSource dataSource, String... columns) {
@@ -885,7 +920,6 @@ public class DataMapWizard extends JFrame {
         }
     }
 
-
     // Update refreshExternalConnectionPanel method:
     private void refreshExternalConnectionPanel() {
         try {
@@ -972,5 +1006,4 @@ public class DataMapWizard extends JFrame {
             e.printStackTrace();
         }
     }
-
 }

@@ -84,8 +84,6 @@ public class GenerateCodePanel extends JPanel {
             }
         });
 
-
-
         buttonPanel.add(regenerateButton);
         buttonPanel.add(copyButton);
         buttonPanel.add(saveButton);
@@ -113,6 +111,7 @@ public class GenerateCodePanel extends JPanel {
                 "Code copied to clipboard successfully!",
                 "Clipboard", JOptionPane.INFORMATION_MESSAGE);
     }
+
     private void saveCodeToFile() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Save Code");
@@ -132,8 +131,6 @@ public class GenerateCodePanel extends JPanel {
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
-
-
 
             // 如果文件名没有以 .java 结尾，则添加
             if (!fileToSave.getName().toLowerCase().endsWith(".java")) {
@@ -162,7 +159,6 @@ public class GenerateCodePanel extends JPanel {
         }
     }
 
-
     public void saveConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Save Configuration");
@@ -177,7 +173,6 @@ public class GenerateCodePanel extends JPanel {
 
         // 设置默认文件名
         fileChooser.setSelectedFile(new File(classname + ".json"));
-//        fileChooser.setFileFilter(new FileNameExtensionFilter("JSON Files", "json"));
 
         int userSelection = fileChooser.showSaveDialog(this);
 
@@ -215,26 +210,40 @@ public class GenerateCodePanel extends JPanel {
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToLoad = fileChooser.getSelectedFile();
+            loadConfigurationFromFile(fileToLoad);
+        }
+    }
 
-            try {
-                Configuration config = JsonConfig.loadFromFile(fileToLoad);
-                applyConfiguration(config);
+    /**
+     * Load configuration from a specific file (called by FileTreePanel)
+     * @param fileToLoad The JSON configuration file to load
+     */
+    public void loadConfigurationFromFile(File fileToLoad) {
+        if (fileToLoad == null || !fileToLoad.exists()) {
+            JOptionPane.showMessageDialog(this,
+                    "Selected file does not exist.",
+                    "Load Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-                JOptionPane.showMessageDialog(this,
-                        "Configuration loaded successfully from " + fileToLoad.getName(),
-                        "Load Successful", JOptionPane.INFORMATION_MESSAGE);
+        try {
+            Configuration config = JsonConfig.loadFromFile(fileToLoad);
+            applyConfiguration(config);
 
-                // Refresh all UI panels to show the loaded data
-                wizard.refreshAllPanelUIs();
+            JOptionPane.showMessageDialog(this,
+                    "Configuration loaded successfully from " + fileToLoad.getName(),
+                    "Load Successful", JOptionPane.INFORMATION_MESSAGE);
 
-                // Update code area
-                updateCode();
+            // Refresh all UI panels to show the loaded data
+            wizard.refreshAllPanelUIs();
 
-            } catch (IOException ex) {
-                JOptionPane.showMessageDialog(this,
-                        "Error loading configuration: " + ex.getMessage(),
-                        "Load Error", JOptionPane.ERROR_MESSAGE);
-            }
+            // Update code area
+            updateCode();
+
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error loading configuration: " + ex.getMessage(),
+                    "Load Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
